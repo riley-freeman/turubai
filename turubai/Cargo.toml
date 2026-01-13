@@ -10,4 +10,5 @@ edition.workspace = true
 include.workspace = true
 
 [dependencies]
+turubai_types = { path="../turubai_types" }
 turubai_macros = { path="../turubai_macros" }

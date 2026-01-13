@@ -1,7 +1,5 @@
 [workspace]
-members = [
-    "turubai"
-, "turubai_macros"]
+members = ["turubai", "turubai_macros", "turubai_types"]
 
 resolver = "2"
 

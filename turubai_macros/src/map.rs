@@ -1,12 +1,12 @@
 use std::{collections::HashMap, sync::LazyLock};
 
-use syn::{Path, parse_str};
+use syn::{Ident, Path, parse_str};
 
 pub static NAMESPACE: &'static str = "crate";
 
 pub struct ElementEntry {
     path_str: String,
-    parameter_struct_str: String,
+    modifier_memeber: String,
 }
 
 impl ElementEntry {
@@ -14,8 +14,8 @@ impl ElementEntry {
         parse_str(&self.path_str).expect("Failed to parse path")
     }
 
-    pub fn parameter_struct(&self) -> Path {
-        parse_str(&self.parameter_struct_str).expect("Failed to parse parameter struct path")
+    pub fn modifier_member(&self) -> Ident {
+        parse_str(&self.modifier_memeber).expect("Failed to parse responsible member in Modifiers struct.")
     }
 }
 
@@ -29,17 +29,17 @@ pub static ELEMENTS: LazyLock<HashMap<&str, ElementEntry>> = LazyLock::new(|| {
     // Visuals
     let text = ElementEntry {
         path_str: format!("{namespace}::elements::Text"),
-        parameter_struct_str: format!("{namespace}::elements::TextParameters"),
+        modifier_memeber: String::from("text"),
     };
 
     // Composition
     let v_stack = ElementEntry {
         path_str: format!("{namespace}::composition::VStack"),
-        parameter_struct_str: format!("{namespace}::composition::StackParameters"),
+        modifier_memeber: String::from("stack"),
     };
     let h_stack = ElementEntry {
         path_str: format!("{namespace}::composition::HStack"),
-        parameter_struct_str: format!("{namespace}::composition::StackParameters"),
+        modifier_memeber: String::from("stack"),
     };
 
     HashMap::from([

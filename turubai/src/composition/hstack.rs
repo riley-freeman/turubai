@@ -1,7 +1,8 @@
 use std::sync::Arc;
 use std::sync::Mutex;
 
-use crate::composition::StackParameters;
+use turubai_types::Modifiers;
+
 use crate::elements::Element;
 
 pub struct HStack {
@@ -9,14 +10,14 @@ pub struct HStack {
 }
 struct HStackInner {
     contents: String,
-    parameters: StackParameters,
+    modifiers: Modifiers,
     children: Vec<Box<dyn Element>>,
 }
 
 
 
 impl HStack {
-    pub fn new(parameters: StackParameters, children: fn() -> Vec<Box<dyn Element>>) -> Self {
+    pub fn new(modifiers: Modifiers, children: fn(Modifiers) -> Vec<Box<dyn Element>>) -> Self {
         todo!()
     }
 }

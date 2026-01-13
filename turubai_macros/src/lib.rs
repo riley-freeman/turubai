@@ -20,6 +20,7 @@ pub fn turubai(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         .collect();
 
     quote!{{
+        let modifiers = turubai_types::Modifiers::default();
         #(#elements)*
     }}.into()
 }

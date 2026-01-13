@@ -1,5 +1,7 @@
 use std::sync::Arc;
 use std::sync::Mutex;
+use turubai_types::Modifiers;
+
 use crate::elements::Element;
 
 pub struct Text {
@@ -7,50 +9,20 @@ pub struct Text {
 }
 struct TextInner {
     contents: String,
-    parameters: TextParameters,
+    modifiers: Modifiers,
     children: Vec<Box<dyn Element>>,
 }
 
-#[derive(Default, PartialEq, Eq, Clone, Copy)]
-pub enum TextAlign {
-    #[default]
-    Leading,
-    Center,
-    Ending,
-}
 
-#[derive(Default, PartialEq, Eq, Clone, Copy, PartialOrd, Ord)]
-pub enum FontWeight {
-    ExtraBlack  = 950,
-    Black       = 900,
-    ExtraBold   = 800,
-    Bold        = 700,
-    SemiBold    = 600,
-    Medium      = 500,
 
-    #[default]
-    Normal      = 400,
-    SemiLight   = 350,
-    Light       = 300,
-    ExtraLight  = 200,
-    Thin        = 100,
 
-}
-
-#[derive(Default, Clone, Copy)]
-pub struct TextParameters {
-    pub align: TextAlign,
-    pub size: f32,
-
-    pub weight: FontWeight,
-}
 
 impl Text {
-    pub fn new(contents: &str, parameters: TextParameters, children: fn() -> Vec<Box<dyn Element>>) -> Self {
+    pub fn new(contents: &str, modifiers: Modifiers, children: fn(Modifiers) -> Vec<Box<dyn Element>>) -> Self {
         let inner = TextInner {
             contents: String::from(contents),
-            parameters: parameters,
-            children: children(),
+            modifiers: modifiers.clone(),
+            children: children(modifiers.fork()),
         };
         Self::from(inner)
     }

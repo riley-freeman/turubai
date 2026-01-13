@@ -46,6 +46,7 @@ name = "turubai"
 version = "0.1.0"
 dependencies = [
  "turubai_macros",
+ "turubai_types",
 ]
 
 [[package]]
@@ -57,6 +58,10 @@ dependencies = [
  "quote",
  "syn",
 ]
+
+[[package]]
+name = "turubai_types"
+version = "0.1.0"
 
 [[package]]
 name = "unicode-ident"
