@@ -1,0 +1,19 @@
+[package]
+name = "turubai_macros"
+version = "0.1.0"
+authors.workspace = true
+license.workspace = true
+homepage.workspace = true
+repository.workspace = true
+edition.workspace = true
+include.workspace = true
+
+[lib]
+proc-macro = true
+
+[dependencies]
+expand = "0.3.0"
+proc-macro2 = "1.0.105"
+quote = "1.0.42"
+
+syn = {version = "2.0.111", features=["parsing"]}
