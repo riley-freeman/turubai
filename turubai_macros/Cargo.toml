@@ -11,6 +11,9 @@ include.workspace = true
 [lib]
 proc-macro = true
 
+[features]
+debug = []
+
 [dependencies]
 expand = "0.3.0"
 proc-macro2 = "1.0.105"

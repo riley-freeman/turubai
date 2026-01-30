@@ -1,0 +1,129 @@
+use taffy::{NodeId, Style, FlexDirection, AlignItems, JustifyContent};
+
+/// A node in the shadow tree - platform agnostic description of a UI element
+#[derive(Debug)]
+pub struct ShadowNode {
+    /// Taffy node ID for layout computation
+    pub taffy_id: NodeId,
+    /// What kind of node this is
+    pub kind: NodeKind,
+    /// Layout style (flexbox properties)
+    pub style: Style,
+    /// Child nodes
+    pub children: Vec<ShadowNode>,
+}
+
+/// The type of shadow node - describes what native view to create
+#[derive(Debug, Clone)]
+pub enum NodeKind {
+    /// A window container
+    Window {
+        title: Option<String>,
+    },
+    /// A text label
+    Text {
+        content: String,
+        font_size: f32,
+        font_weight: FontWeight,
+    },
+    /// A horizontal stack (HStack)
+    HStack {
+        spacing: f32,
+    },
+    /// A vertical stack (VStack)
+    VStack {
+        spacing: f32,
+    },
+    /// A generic container view
+    View,
+}
+
+/// Font weight for text rendering
+#[derive(Debug, Clone, Copy, Default)]
+pub enum FontWeight {
+    Thin,
+    Light,
+    #[default]
+    Regular,
+    Medium,
+    Semibold,
+    Bold,
+    Heavy,
+    Black,
+}
+
+/// Descriptor returned by elements to build their shadow node
+pub struct ShadowDescriptor {
+    pub kind: NodeKind,
+    pub style: Style,
+}
+
+impl ShadowDescriptor {
+    pub fn text(content: impl Into<String>, font_size: f32, font_weight: FontWeight) -> Self {
+        Self {
+            kind: NodeKind::Text {
+                content: content.into(),
+                font_size,
+                font_weight,
+            },
+            style: Style::default(),
+        }
+    }
+
+    pub fn hstack(spacing: f32) -> Self {
+        Self {
+            kind: NodeKind::HStack { spacing },
+            style: Style {
+                flex_direction: FlexDirection::Row,
+                align_items: Some(AlignItems::Center),
+                gap: taffy::Size {
+                    width: taffy::LengthPercentage::length(spacing),
+                    height: taffy::LengthPercentage::length(0.0),
+                },
+                ..Default::default()
+            },
+        }
+    }
+
+    pub fn vstack(spacing: f32) -> Self {
+        Self {
+            kind: NodeKind::VStack { spacing },
+            style: Style {
+                flex_direction: FlexDirection::Column,
+                align_items: Some(AlignItems::Center),
+                gap: taffy::Size {
+                    width: taffy::LengthPercentage::length(0.0),
+                    height: taffy::LengthPercentage::length(spacing),
+                },
+                ..Default::default()
+            },
+        }
+    }
+
+    pub fn window(title: Option<String>) -> Self {
+        Self {
+            kind: NodeKind::Window { title },
+            style: Style {
+                flex_direction: FlexDirection::Column,
+                size: taffy::Size {
+                    width: taffy::Dimension::percent(1.0),
+                    height: taffy::Dimension::percent(1.0),
+                },
+                ..Default::default()
+            },
+        }
+    }
+
+    pub fn view() -> Self {
+        Self {
+            kind: NodeKind::View,
+            style: Style::default(),
+        }
+    }
+
+    /// Modify the style
+    pub fn with_style(mut self, f: impl FnOnce(&mut Style)) -> Self {
+        f(&mut self.style);
+        self
+    }
+}

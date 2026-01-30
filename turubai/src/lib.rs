@@ -1,12 +1,29 @@
 pub mod elements;
 pub mod composition;
+pub mod runtime;
+pub mod font;
+pub mod shadow;
+pub mod pal;
 
 #[cfg(test)]
 mod tests;
 
+use elements::Element;
 
-pub struct Runtime {
-
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Ord, PartialOrd)]
+pub enum Backend {
+    WinUI   = 0,
+    Apple   = 1,
+    Android = 2,
+    Wayland = 3,
+    X11     = 4,
 }
+
+pub trait Application: Send + Sync {
+    fn markup(&self) -> Box<dyn Element>;
+}
+
+
+
 
 

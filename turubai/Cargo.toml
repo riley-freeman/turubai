@@ -10,5 +10,15 @@ edition.workspace = true
 include.workspace = true
 
 [dependencies]
-turubai_types = { path="../turubai_types" }
 turubai_macros = { path="../turubai_macros" }
+
+libc = "0.2.180"
+taffy = "0.9.2"
+derivative = "2.2.0"
+
+cacao = { version = "0.3.2", optional = true }
+plist = { version = "1.8.0", optional = true }
+core-foundation = { version = "0.10.1", optional = true }
+
+[features]
+apple = ["dep:cacao", "dep:plist"]

@@ -1,1 +1,8 @@
 /target
+
+.vscode/
+.idea/
+.claude/
+
+
+dummy.rs

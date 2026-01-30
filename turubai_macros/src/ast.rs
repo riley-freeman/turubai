@@ -1,4 +1,6 @@
-use syn::{Expr, Ident, Token, braced, parenthesized, parse::{Parse, ParseStream}, punctuated::Punctuated, token::{Brace, Paren}};
+use std::{collections, mem::uninitialized};
+
+use syn::{Expr, Ident, LitInt, PathSegment, Token, braced, parenthesized, parse::{Parse, ParseStream}, punctuated::Punctuated, token::{Brace, Paren}};
 
 use quote::ToTokens;
 use quote::quote;
@@ -6,7 +8,7 @@ use quote::quote;
 use crate::map::{ELEMENTS};
 
 pub struct ExprElement {
-    tag: Ident,
+    tag: syn::Path,
     _paren_token: Option<Paren>,
     required_args: Punctuated<Expr, Token![,]>,
     optional_args: Punctuated<OptionalAttrExpr, Token![,]>,
@@ -15,15 +17,20 @@ pub struct ExprElement {
 }
 
 impl ExprElement {
-    pub fn _tag(&self) -> String {
-        self.tag.to_string()
+    pub fn tag(&self) -> String {
+        self.tag.segments.last().unwrap().ident.to_string()
+    }
+
+    pub fn path(&self) -> syn::Path {
+        self.tag.clone()
     }
 
     pub fn to_token_stream(&self) -> proc_macro2::TokenStream {
-        let name = self.tag.to_string();
-        let record = ELEMENTS.get(name.as_str()).unwrap();
+        let tag = self.tag();
+        let path = self.path();
 
-        let path = record.path().into_token_stream();
+        //let record = ELEMENTS.get(tag.as_str()).expect("Element is not registered in the Turubai Macros database");
+
         let required_args = self.required_args();
         let optional_args = self.optional_args();
 
@@ -31,7 +38,8 @@ impl ExprElement {
         let mut children_names = Punctuated::<Ident, Token![,]>::new();
         for (i, child) in self.children.iter().enumerate() {
             let render = child.to_token_stream();
-            let child_name = Ident::new(&format!("ch_{i}"), self.brace_token.unwrap().span.open().clone());
+            let brace_token = self.brace_token.expect("Failed to find any brace tokens!");
+            let child_name = Ident::new(&format!("ch_{i}"), brace_token.span.open().clone());
             children.push(quote! {let #child_name = Box::new(#render);});
             children_names.push(child_name);
         }
@@ -43,14 +51,17 @@ impl ExprElement {
             |modifiers| {#(#children)*}
         };
 
+        let method_name = Ident::new(&format!("new_{}", self.required_args.len()), path.segments.last().unwrap().ident.span());
         let result = if required_args.is_empty() {
-            quote! { #path::new(#optional_args, #wrapped_children_function) }
+            quote! { #path::#method_name(#optional_args, #wrapped_children_function) }
         } else {
-            quote! { #path::new(#required_args, #optional_args, #wrapped_children_function) }
+            quote! { #path::#method_name(#required_args, #optional_args, #wrapped_children_function) }
         };
 
-        eprintln!("\n=== {} ===", name);
-        eprintln!("{}", result.to_string().replace(" :: ", "::"));
+        if cfg!(feature = "debug") {
+            eprintln!("\n=== {} ===", tag);
+            eprintln!("{}", result.to_string().replace(" :: ", "::"));
+        }
 
         result
     }
@@ -59,11 +70,20 @@ impl ExprElement {
         self.required_args.to_token_stream().into()
     }
 
-    pub fn optional_args(&self) -> proc_macro2::TokenStream {
-        let name = self.tag.to_string();
-        let record = ELEMENTS.get(name.as_str()).unwrap();
+    fn to_namespace(original: &str) -> String {
+        let mut output = "".to_string();
+        for (i, c) in original.chars().enumerate() {
+            if c.is_ascii_uppercase() && i != 0 {
+                output.push('_');
+            }
+            output.push(c.to_ascii_lowercase());
+        }
+        output
+    }
 
-        let default_member = record.modifier_member();
+    pub fn optional_args(&self) -> proc_macro2::TokenStream {
+        let name = self.tag();
+        let default_member = Self::to_namespace(&name);
 
         let mut set_tokens = vec![];
         for arg in &self.optional_args {
@@ -74,7 +94,8 @@ impl ExprElement {
             let member = if let Some(ref ns) = arg.namespace {
                 ns.clone()
             } else {
-                default_member.clone()
+                let token: Ident = syn::parse_str(&default_member).unwrap();
+                token
             };
 
             set_tokens.push(quote!{fm_lock.#member.#field_name = #val;});
@@ -128,7 +149,7 @@ fn parse_attributes(input: ParseStream) -> syn::Result<(Punctuated<Expr, Token![
 
 impl Parse for ExprElement {
     fn parse(input: ParseStream) -> syn::Result<Self> {
-        let tag = input.parse::<Ident>()?;
+        let tag = input.parse::<syn::Path>()?;
 
         let mut required_args = Punctuated::<Expr, Token![,]>::new();
         let mut optional_args = Punctuated::<OptionalAttrExpr, Token![,]>::new();
