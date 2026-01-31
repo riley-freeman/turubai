@@ -1,4 +1,4 @@
-#[derive(Default, PartialEq, Eq, Clone, Copy, PartialOrd, Ord)]
+#[derive(Default, Debug, PartialEq, Eq, Clone, Copy, PartialOrd, Ord)]
 pub enum FontWeight {
     ExtraBlack  = 950,
     Black       = 900,

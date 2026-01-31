@@ -1,10 +1,11 @@
 mod node;
+mod conv;
 
 pub use node::*;
 
 use std::cell::RefCell;
 use std::collections::HashMap;
-use taffy::{Layout, NodeId, TaffyTree};
+use taffy::{Dimension, Layout, LengthPercentage, NodeId, Size, TaffyTree};
 
 /// The shadow tree holds the platform-agnostic representation of the UI.
 /// It owns the layout tree (Taffy) and maps layout nodes to shadow nodes.
@@ -59,23 +60,18 @@ impl ShadowTree {
     }
 
     /// Compute layout for the entire tree
-    pub fn compute_layout(&mut self, available_width: f32, available_height: f32) {
-        // Take root temporarily to avoid borrow issues
-        if let Some(root) = self.root.take() {
-            let available = taffy::Size {
-                width: taffy::AvailableSpace::Definite(available_width),
-                height: taffy::AvailableSpace::Definite(available_height),
-            };
-            self.taffy.borrow_mut()
-                .compute_layout(root.taffy_id, available)
-                .expect("Failed to compute layout");
+    pub fn compute_layout(&mut self, root: &ShadowNode, available_width: f32, available_height: f32) {
+        let available = taffy::Size {
+            width: taffy::AvailableSpace::Definite(available_width),
+            height: taffy::AvailableSpace::Definite(available_height),
+        };
 
-            // Cache computed layouts
-            self.cache_layouts_recursive(&root);
+        self.taffy.borrow_mut()
+            .compute_layout(root.taffy_id, available)
+            .expect("Failed to compute layout");
 
-            // Put root back
-            self.root = Some(root);
-        }
+        // Cache computed layouts
+        self.cache_layouts_recursive(&root);
     }
 
     fn cache_layouts_recursive(&mut self, node: &ShadowNode) {
@@ -85,6 +81,15 @@ impl ShadowTree {
         for child in &node.children {
             self.cache_layouts_recursive(child);
         }
+    }
+
+    pub fn set_size(&self, id: NodeId, width: Dimension, height: Dimension) {
+        let mut style = {
+            let tree = self.taffy.borrow_mut();
+            tree.style(id).unwrap().clone()
+        };
+        style.size = Size { width,  height };
+        self.taffy.borrow_mut().set_style(id, style);
     }
 
     /// Get the computed layout for a node

@@ -2,7 +2,8 @@ use std::sync::Arc;
 use std::sync::Mutex;
 
 use crate::elements::{Element, Modifiers};
-use crate::shadow::{ShadowDescriptor, FontWeight as ShadowFontWeight};
+use crate::font::FontWeight;
+use crate::shadow::ShadowDescriptor;
 
 pub struct Text {
     inner: Arc<Mutex<TextInner>>,
@@ -55,21 +56,10 @@ impl Element for Text {
         let inner = self.inner.lock().unwrap();
         let mods_inner = inner.modifiers.lock().unwrap();
 
-        let font_weight = match mods_inner.text.weight {
-            FontWeight::Thin => ShadowFontWeight::Thin,
-            FontWeight::Light => ShadowFontWeight::Light,
-            FontWeight::Regular => ShadowFontWeight::Regular,
-            FontWeight::Medium => ShadowFontWeight::Medium,
-            FontWeight::Semibold => ShadowFontWeight::Semibold,
-            FontWeight::Bold => ShadowFontWeight::Bold,
-            FontWeight::Heavy => ShadowFontWeight::Heavy,
-            FontWeight::Black => ShadowFontWeight::Black,
-        };
-
         ShadowDescriptor::text(
             inner.contents.clone(),
             mods_inner.text.size,
-            font_weight,
+            mods_inner.text.weight,
         )
     }
 
@@ -91,19 +81,6 @@ pub enum TextAlign {
     Leading,
     Center,
     Trailing,
-}
-
-#[derive(Default, PartialEq, Eq, Clone, Copy)]
-pub enum FontWeight {
-    Thin,
-    Light,
-    #[default]
-    Regular,
-    Medium,
-    Semibold,
-    Bold,
-    Heavy,
-    Black,
 }
 
 #[derive(Default, Clone, Copy, PartialEq)]

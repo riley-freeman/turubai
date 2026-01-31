@@ -1,4 +1,4 @@
-use turubai::{Application, composition::{HStack, VStack}, elements::{Element, Text}, runtime::WindowTemplate};
+use turubai::{Application, composition::{HStack, HorizontalAlignment, VStack}, elements::{Element, Text}, runtime::WindowTemplate};
 use turubai_macros::turubai;
 
 #[derive(Default)]
@@ -9,24 +9,17 @@ impl Application for MyApplication {
     fn markup(&self) -> Box<dyn Element> {
         Box::new(turubai!(
             WindowTemplate(title: Some("Hello World! (Example)".to_string())) {
-                VStack(spacing: 8.0) {
+                VStack(spacing: 16.0, alignment: HorizontalAlignment::Center) {
                     Text("Hello, World!"),
-                    HStack(spacing: 8.0) {
+                    VStack(spacing: 0.0) {
+                        Text("Now with TAFFY!"),
+                        Text("Now with Center Alignment!"),
+                    },
+                    HStack(spacing: 16.0) {
                         Text("Crayon"),
                         Text("🖍️"),
                         Text("️Turubari"),
-                    }
-                    // HStack {
-                    //     Text("Turubai!"),
-                    //     Text("🎨"),
-                    //     Text("❤️"),
-                    // },
-                    // HStack {
-                    //     Text("Mark Sadiki"),
-                    //     Text("🥷🏿"),
-                    //     Text("Ngishu"),
-                    //     Text("❤️"),
-                    // }
+                    },
                 }
             },
         ))

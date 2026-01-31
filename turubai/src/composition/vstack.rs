@@ -42,7 +42,7 @@ impl Element for VStack {
     fn shadow_descriptor(&self) -> ShadowDescriptor {
         let inner = self.inner.lock().unwrap();
         let mods = inner.modifiers.lock().unwrap();
-        ShadowDescriptor::vstack(mods.v_stack.spacing)
+        ShadowDescriptor::vstack(mods.v_stack.spacing, mods.v_stack.alignment)
     }
 
     fn child_count(&self) -> usize {

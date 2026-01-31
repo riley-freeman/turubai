@@ -42,7 +42,7 @@ impl Element for HStack {
     fn shadow_descriptor(&self) -> ShadowDescriptor {
         let inner = self.inner.lock().unwrap();
         let mods = inner.modifiers.lock().unwrap();
-        ShadowDescriptor::hstack(mods.h_stack.spacing)
+        ShadowDescriptor::hstack(mods.h_stack.spacing, mods.h_stack.alignment)
     }
 
     fn child_count(&self) -> usize {

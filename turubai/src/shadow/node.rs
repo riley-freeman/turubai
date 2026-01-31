@@ -1,5 +1,7 @@
 use taffy::{NodeId, Style, FlexDirection, AlignItems, JustifyContent};
 
+use crate::{composition::{HorizontalAlignment, VerticalAlignment}, font::FontWeight, shadow::conv::{self, conv_h_alignment, conv_v_alignment}};
+
 /// A node in the shadow tree - platform agnostic description of a UI element
 #[derive(Debug)]
 pub struct ShadowNode {
@@ -29,27 +31,15 @@ pub enum NodeKind {
     /// A horizontal stack (HStack)
     HStack {
         spacing: f32,
+        alignment: VerticalAlignment,
     },
     /// A vertical stack (VStack)
     VStack {
         spacing: f32,
+        alignment: HorizontalAlignment,
     },
     /// A generic container view
     View,
-}
-
-/// Font weight for text rendering
-#[derive(Debug, Clone, Copy, Default)]
-pub enum FontWeight {
-    Thin,
-    Light,
-    #[default]
-    Regular,
-    Medium,
-    Semibold,
-    Bold,
-    Heavy,
-    Black,
 }
 
 /// Descriptor returned by elements to build their shadow node
@@ -70,12 +60,12 @@ impl ShadowDescriptor {
         }
     }
 
-    pub fn hstack(spacing: f32) -> Self {
+    pub fn hstack(spacing: f32, alignment: VerticalAlignment) -> Self {
         Self {
-            kind: NodeKind::HStack { spacing },
+            kind: NodeKind::HStack { spacing, alignment },
             style: Style {
                 flex_direction: FlexDirection::Row,
-                align_items: Some(AlignItems::Center),
+                align_items: Some(conv_v_alignment(alignment)),
                 gap: taffy::Size {
                     width: taffy::LengthPercentage::length(spacing),
                     height: taffy::LengthPercentage::length(0.0),
@@ -85,12 +75,12 @@ impl ShadowDescriptor {
         }
     }
 
-    pub fn vstack(spacing: f32) -> Self {
+    pub fn vstack(spacing: f32, alignment: HorizontalAlignment) -> Self {
         Self {
-            kind: NodeKind::VStack { spacing },
+            kind: NodeKind::VStack { spacing, alignment },
             style: Style {
                 flex_direction: FlexDirection::Column,
-                align_items: Some(AlignItems::Center),
+                align_items: Some(conv_h_alignment(alignment)),
                 gap: taffy::Size {
                     width: taffy::LengthPercentage::length(0.0),
                     height: taffy::LengthPercentage::length(spacing),
@@ -104,7 +94,7 @@ impl ShadowDescriptor {
         Self {
             kind: NodeKind::Window { title },
             style: Style {
-                flex_direction: FlexDirection::Column,
+                flex_direction: FlexDirection::Row,
                 size: taffy::Size {
                     width: taffy::Dimension::percent(1.0),
                     height: taffy::Dimension::percent(1.0),

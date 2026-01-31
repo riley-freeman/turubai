@@ -3,7 +3,7 @@ mod text;
 pub use text::*;
 
 use std::sync::{Arc, Mutex, MutexGuard, LockResult};
-use crate::{runtime::WindowModifiers, shadow::ShadowDescriptor};
+use crate::{composition::{HStackModifiers, VStackModifiers}, runtime::WindowModifiers, shadow::ShadowDescriptor};
 
 pub trait Element: Send + Sync {
     fn name(&self) -> &'static str;
@@ -30,8 +30,8 @@ pub trait Element: Send + Sync {
 #[derive(Default, Clone, PartialEq)]
 pub struct ModifiersInner {
     pub text: TextModifiers,
-    pub v_stack: StackModifiers,
-    pub h_stack: StackModifiers,
+    pub v_stack: VStackModifiers,
+    pub h_stack: HStackModifiers,
     pub window_template: WindowModifiers,
 }
 
@@ -49,9 +49,4 @@ impl Modifiers {
     pub fn lock(&self) -> LockResult<MutexGuard<'_, ModifiersInner>> {
         self.inner.lock()
     }
-}
-
-#[derive(Default, Clone, Copy, PartialEq)]
-pub struct StackModifiers {
-    pub spacing: f32,
 }
