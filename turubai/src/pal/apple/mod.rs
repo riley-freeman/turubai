@@ -1,21 +1,24 @@
+use std::collections::HashMap;
 use std::process::exit;
 use std::ptr::slice_from_raw_parts;
+use std::sync::{Arc, Mutex};
 
 use cacao::appkit::{App, AppDelegate};
 use cacao::appkit::window::{Window, WindowConfig, WindowDelegate, WindowStyle};
 use cacao::color::Color;
 use cacao::core_foundation::bundle::{CFBundleGetIdentifier, CFBundleGetMainBundle};
 use cacao::core_graphics::display::{CGPoint, CGRect, CGSize};
-use cacao::geometry::Rect;
 use cacao::layout::{Layout, LayoutConstraint};
 use cacao::text::Label;
 use cacao::view::View;
 
 use libc::strlen;
-use taffy::{AvailableSpace, Dimension, Point, Size};
 
 mod measure;
+mod font;
 
+use crate::font::Font;
+use crate::pal::apple::font::NativeFont;
 use crate::pal::apple::measure::{get_estimated_size, update_node_sizes};
 use crate::{Application, Backend};
 use crate::pal::{apple, DynContext};
@@ -29,37 +32,31 @@ impl crate::pal::API for API {
 }
 
 /// Main application context - holds the app and manages windows
-pub struct Context {
+pub struct ContextInner {
     user_app: Box<dyn Application>,
-    window: Window<TurubaiWindowDelegate>,
+    windows: Mutex<Vec<Window<TurubaiWindowDelegate>>>,
+    native_fonts: Mutex<HashMap<Font, NativeFont>>,
+}
+
+#[derive(Clone)]
+pub struct Context {
+    inner: Arc<ContextInner>,
 }
 
 impl Context {
     fn new(app: Box<dyn Application>) -> Self {
-        let mut shadow_tree = ShadowTree::new();
-
-        // Get the root element for the window
-        let window_element = app.markup();
-        let window_shadow = shadow_tree.create_node_from_element(window_element.as_ref());
-
-        let root_shadow = window_shadow.children.get(0).unwrap();
-        let (width, height) = get_estimated_size(root_shadow);
-
-        // Update the sizes and position our nodes with taffy
-        update_node_sizes(&root_shadow, &shadow_tree);
-        shadow_tree.compute_layout(root_shadow, width as _, height as _);
-
-        // Create the native window from the shadow tree
-        let window = Self::create_window(&root_shadow, &mut shadow_tree);
-
-        Self {
+        let inner = ContextInner {
             user_app: app,
-            window,
-        }
+            windows: Mutex::new(Vec::new()),
+            native_fonts: Mutex::new(HashMap::new()),
+        };
+        let output = Self { inner: Arc::new(inner) };
+
+        output
     }
 
 
-    fn create_window(root: &ShadowNode, tree: &mut ShadowTree) -> Window<TurubaiWindowDelegate> {
+    fn create_window(&self, root: ShadowNode, tree: ShadowTree) -> Window<TurubaiWindowDelegate> {
         let title = match &root.kind {
             NodeKind::Window { title } => title.clone().unwrap_or_else(|| "Turubai App".to_string()),
             _ => "Turubai App".to_string(),
@@ -73,18 +70,50 @@ impl Context {
             WindowStyle::Resizable,
         ]);
 
-        let delegate = TurubaiWindowDelegate::new(root, tree);
+        let delegate = TurubaiWindowDelegate::new(root, tree, self.clone());
         let window = Window::with(config, delegate);
         window.set_title(&title);
 
         window
     }
+
+    fn get_native_font(&self, font: &Font) -> NativeFont {
+        let mut fonts = self.inner.native_fonts.lock().unwrap();
+        if let Some(font) = fonts.get(&font) {
+            font.clone()
+        } else {
+            let native_font = NativeFont::new(&font.name(), font.size());
+            fonts.insert(font.clone(), native_font.clone());
+            native_font
+        }
+    }
 }
 
 impl AppDelegate for Context {
+    fn will_finish_launching(&self) {
+        let window_element = self.inner.user_app.markup();
+
+        let mut shadow_tree = ShadowTree::new();
+
+        let mut window_shadow = shadow_tree.create_node_from_element(window_element.as_ref());
+
+        let root_shadow = window_shadow.children.pop().unwrap();
+        let (width, height) = get_estimated_size(&root_shadow, self.clone());
+
+        update_node_sizes(&root_shadow, &shadow_tree, self.clone());
+        shadow_tree.compute_layout(&root_shadow, width as _, height as _);
+
+        let window = self.create_window(root_shadow, shadow_tree);
+
+        self.inner.windows.lock().unwrap().push(window);
+    }
+
     fn did_finish_launching(&self) {
         App::activate();
-        self.window.show();
+        let windows = self.inner.windows.lock().unwrap();
+        for window in windows.iter() {
+            window.show();
+        }
     }
 
     fn should_terminate_after_last_window_closed(&self) -> bool {
@@ -141,20 +170,48 @@ impl NativeView {
             NativeView::Text { wrapper, .. } => wrapper,
         }
     }
+
+    /// Recursively update frames from the shadow tree layout
+    /// If `skip_self` is true, only update children (used when parent is positioned by constraints)
+    fn update_frames(&self, node: &ShadowNode, tree: &ShadowTree, skip_self: bool) {
+        if !skip_self {
+            let layout = tree.get_layout(node.taffy_id).unwrap();
+            let x = layout.location.x as f64;
+            let y = layout.location.y as f64;
+            let width = layout.size.width as f64;
+            let height = layout.size.height as f64;
+
+            let frame = CGRect::new(&CGPoint { x, y }, &CGSize { width, height });
+            self.view().set_frame(frame);
+        }
+
+        // Recursively update children
+        if let NativeView::Container { _children, .. } = self {
+            for (child_view, child_node) in _children.iter().zip(node.children.iter()) {
+                child_view.update_frames(child_node, tree, false);
+            }
+        }
+    }
 }
 
 /// Window delegate - manages the content of a single window
 pub struct TurubaiWindowDelegate {
+    context: Context,
+
     content: View,
-    /// Keep all native views alive - cacao needs these retained
+    window: Option<Window>,
+
+    new_dimentions: Mutex<CGSize>,
+    shadow_tree: Mutex<ShadowTree>,
+    root_node: ShadowNode,
+
     _root_view: NativeView,
-    /// Content size for window fitting
     content_width: f64,
     content_height: f64,
 }
 
 impl TurubaiWindowDelegate {
-    fn new(root: &ShadowNode, tree: &mut ShadowTree) -> Self {
+    fn new(root: ShadowNode, mut tree:  ShadowTree, context: Context) -> Self {
         eprintln!("[DEBUG] TurubaiWindowDelegate::new called");
         eprintln!("[DEBUG] Root node kind: {:?}", root.kind);
         eprintln!("[DEBUG] Root has {} children", root.children.len());
@@ -162,38 +219,36 @@ impl TurubaiWindowDelegate {
         let content = View::new();
 
         // Calcualate the positions and sizes of the elements
-        let (available_width, available_height) = get_estimated_size(root);
+        let (available_width, available_height) = get_estimated_size(&root, context.clone());
         eprintln!("[DEBUG] Computed content size: {}x{}", available_width, available_height);
 
-        // Render the root node 
-        let root_view = Self::render_node(root, tree);
+        // Render the root node
+        let root_view = Self::render_node(&root, &tree, context.clone());
         content.add_subview(root_view.view());
 
-        // let mut root_views: Vec<NativeView> = Vec::new();
-        // for (i, child) in root.children.iter().enumerate() {
-        //     eprintln!("[DEBUG] Rendering child {}: {:?}", i, child.kind);
+        // Must disable autoresizing mask translation to use Auto Layout constraints
+        root_view.view().set_translates_autoresizing_mask_into_constraints(false);
 
-        //     let native_view= Self::render_node(child, tree);
-
-        //     content.add_subview(native_view.view());
-
-        //     // Pin to edges with padding
-        //     LayoutConstraint::activate(&[
-        //         native_view.view().top.constraint_equal_to(&content.top),
-        //         native_view.view().leading.constraint_equal_to(&content.leading),
-        //         content.trailing.constraint_equal_to(&native_view.view().trailing),
-        //         content.bottom.constraint_equal_to(&native_view.view().bottom),
-        //     ]);
-
-        //     root_views.push(native_view);
-        // }
+        LayoutConstraint::activate(&[
+            root_view.view().center_x.constraint_equal_to(&content.center_x),
+            root_view.view().center_y.constraint_equal_to(&content.center_y),
+            root_view.view().width.constraint_equal_to_constant(available_width),
+            root_view.view().height.constraint_equal_to_constant(available_height),
+        ]);
 
         // Add padding to content size
         let content_width = available_width;
         let content_height = available_height;
 
         Self {
+            context,
             content,
+            window: None,
+
+            new_dimentions: Mutex::new(CGSize::default()),
+            shadow_tree: Mutex::new(tree),
+            root_node: root,
+
             _root_view: root_view,
             content_width,
             content_height,
@@ -202,7 +257,7 @@ impl TurubaiWindowDelegate {
 
     /// Recursively render a shadow node to native views
     /// Returns (NativeView, estimated_width, estimated_height)
-    fn render_node(node: &ShadowNode, tree: &ShadowTree) -> NativeView {
+    fn render_node(node: &ShadowNode, tree: &ShadowTree, context: Context) -> NativeView {
         let layout = tree.get_layout(node.taffy_id).unwrap();
         let x = layout.location.x as f64;
         let y = layout.location.y as f64;
@@ -211,12 +266,14 @@ impl TurubaiWindowDelegate {
 
         let frame = CGRect::new(&CGPoint { x, y }, &CGSize { width, height });
         let view = match &node.kind {
-            NodeKind::Text { content, font_size, font_weight } => {
+            NodeKind::Text { content, font} => {
                 eprintln!("[DEBUG] rendering label: \"{}\"", content);
 
+                let native_font = context.get_native_font(font);
                 let label = Label::new();
                 label.set_text_color(Color::Label);
                 label.set_text(content);
+                label.set_font(native_font.os_font());
 
                 let wrapper = View::new();
                 wrapper.add_subview(&label);
@@ -238,7 +295,7 @@ impl TurubaiWindowDelegate {
                 eprintln!("[DEBUG] rendering Horizontal Stack (Column)");
 
                 let rendered: Vec<NativeView> = node.children
-                    .iter().map(|c| Self::render_node(c, tree))
+                    .iter().map(|c| Self::render_node(c, tree, context.clone()))
                     .collect();
 
                 let view = View::new();
@@ -254,7 +311,7 @@ impl TurubaiWindowDelegate {
                 eprintln!("[DEBUG] rendering Vertical Stack (Row)");
 
                 let rendered: Vec<NativeView> = node.children
-                    .iter().map(|c| Self::render_node(c, tree))
+                    .iter().map(|c| Self::render_node(c, tree, context.clone()))
                     .collect();
 
                 let view = View::new();
@@ -298,6 +355,8 @@ impl TurubaiWindowDelegate {
         view.view().set_frame(frame);
         view
     }
+
+
 }
 
 impl WindowDelegate for TurubaiWindowDelegate {
@@ -308,5 +367,27 @@ impl WindowDelegate for TurubaiWindowDelegate {
         window.set_content_view(&self.content);
         window.set_content_size(self.content_width, self.content_height);
         window.set_minimum_content_size(self.content_width, self.content_height);
+
+        self.window = Some(window);
+    }
+
+    fn will_resize(&self, new_width: f64, new_height: f64) -> (f64, f64) {
+        *self.new_dimentions.lock().unwrap() = CGSize::new(new_width, new_height);
+        (new_width, new_height)
+    }
+
+    fn did_resize(&self) {
+        let mut shadow_tree = self.shadow_tree.lock().unwrap();
+        let nd = self.new_dimentions.lock().unwrap();
+
+        eprintln!("[DEBUG] Window resized to {}x{}", nd.width, nd.height);
+
+        // Recompute layout with new dimensions
+        update_node_sizes(&self.root_node, &shadow_tree, self.context.clone());
+        shadow_tree.compute_layout(&self.root_node, nd.width as f32, nd.height as f32);
+
+        // Update all view frames from the new layout
+        // Skip the root view since it's positioned by centering constraints
+        self._root_view.update_frames(&self.root_node, &shadow_tree, true);
     }
 }

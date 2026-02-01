@@ -803,6 +803,7 @@ dependencies = [
  "core-foundation 0.10.1",
  "derivative",
  "libc",
+ "objc_id",
  "plist",
  "taffy",
  "turubai_macros",

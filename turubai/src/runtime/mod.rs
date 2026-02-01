@@ -18,11 +18,15 @@ struct WindowTemplateInner {
 }
 
 impl WindowTemplate {
-    pub fn new_0(modifiers: Modifiers, children: fn(Modifiers) -> Vec<Box<dyn Element>>) -> Self {
-        Self::new_1("default", modifiers, children)
+    pub fn new_0(modifiers: Modifiers, children: impl FnOnce(Modifiers) -> Vec<Box<dyn Element>>) -> Self {
+        Self::new_1_impl("default", modifiers, children)
     }
 
-    pub fn new_1(id: &str, modifiers: Modifiers, children: fn(Modifiers) -> Vec<Box<dyn Element>>) -> Self {
+    pub fn new_1(id: &str, modifiers: Modifiers, children: impl FnOnce(Modifiers) -> Vec<Box<dyn Element>>) -> Self {
+        Self::new_1_impl(id, modifiers, children)
+    }
+
+    fn new_1_impl(id: &str, modifiers: Modifiers, children: impl FnOnce(Modifiers) -> Vec<Box<dyn Element>>) -> Self {
         let mods = modifiers.lock().unwrap();
         let title = mods.window_template.title.clone();
         std::mem::drop(mods);

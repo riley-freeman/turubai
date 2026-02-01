@@ -2,6 +2,7 @@ use std::sync::Arc;
 use std::sync::Mutex;
 
 use crate::elements::{Element, Modifiers};
+use crate::font::Font;
 use crate::font::FontWeight;
 use crate::shadow::ShadowDescriptor;
 
@@ -58,8 +59,7 @@ impl Element for Text {
 
         ShadowDescriptor::text(
             inner.contents.clone(),
-            mods_inner.text.size,
-            mods_inner.text.weight,
+            mods_inner.text.font.clone(),
         )
     }
 
@@ -83,9 +83,7 @@ pub enum TextAlign {
     Trailing,
 }
 
-#[derive(Default, Clone, Copy, PartialEq)]
+#[derive(Default, Clone, PartialEq)]
 pub struct TextModifiers {
-    pub size: f32,
-    pub align: TextAlign,
-    pub weight: FontWeight,
+    pub font: Font,
 }

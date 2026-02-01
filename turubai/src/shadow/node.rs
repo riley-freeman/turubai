@@ -1,6 +1,6 @@
 use taffy::{NodeId, Style, FlexDirection, AlignItems, JustifyContent};
 
-use crate::{composition::{HorizontalAlignment, VerticalAlignment}, font::FontWeight, shadow::conv::{self, conv_h_alignment, conv_v_alignment}};
+use crate::{composition::{HorizontalAlignment, VerticalAlignment}, font::{Font, FontWeight}, shadow::conv::{self, conv_h_alignment, conv_v_alignment}};
 
 /// A node in the shadow tree - platform agnostic description of a UI element
 #[derive(Debug)]
@@ -25,8 +25,7 @@ pub enum NodeKind {
     /// A text label
     Text {
         content: String,
-        font_size: f32,
-        font_weight: FontWeight,
+        font: Font, 
     },
     /// A horizontal stack (HStack)
     HStack {
@@ -49,12 +48,11 @@ pub struct ShadowDescriptor {
 }
 
 impl ShadowDescriptor {
-    pub fn text(content: impl Into<String>, font_size: f32, font_weight: FontWeight) -> Self {
+    pub fn text(content: impl Into<String>, font: Font) -> Self {
         Self {
             kind: NodeKind::Text {
                 content: content.into(),
-                font_size,
-                font_weight,
+                font,
             },
             style: Style::default(),
         }

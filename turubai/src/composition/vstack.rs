@@ -24,7 +24,7 @@ impl VStack {
         }
     }
 
-    pub fn new_0(modifiers: Modifiers, children: fn(Modifiers) -> Vec<Box<dyn Element>>) -> Self {
+    pub fn new_0(modifiers: Modifiers, children: impl FnOnce(Modifiers) -> Vec<Box<dyn Element>>) -> Self {
         let child_elements = children(modifiers.fork());
         Self::new(modifiers, child_elements)
     }

@@ -1,9 +1,9 @@
 use cacao::text::Label;
 use cacao::objc::{msg_send, sel, sel_impl};
-use taffy::TaffyTree;
 
+use crate::pal::apple::Context;
 use crate::shadow::ShadowTree;
-use crate::{composition::VerticalAlignment, shadow::{NodeKind, ShadowDescriptor, ShadowNode}};
+use crate::shadow::{NodeKind, ShadowNode};
 
 /// CGSize from Core Graphics - matches the Objective-C struct
 #[repr(C)]
@@ -13,13 +13,13 @@ struct CGSize {
     height: f64,
 }
 
-pub fn get_estimated_size(node: &ShadowNode) -> (f64, f64) {
+pub fn get_estimated_size(node: &ShadowNode, context: Context) -> (f64, f64) {
     match node.kind.clone() {
         NodeKind::HStack { spacing, alignment: _ } => {
             let mut width = 0.0;
             let mut max_height = 0.0;
             for child in &node.children {
-                let (child_width, child_height) = get_estimated_size(child);
+                let (child_width, child_height) = get_estimated_size(child, context.clone());
                 if child_height > max_height {
                     max_height = child_height;
                 }
@@ -35,7 +35,7 @@ pub fn get_estimated_size(node: &ShadowNode) -> (f64, f64) {
             let mut height = 0.0;
 
             for child in &node.children {
-                let (child_width, child_height) = get_estimated_size(child);
+                let (child_width, child_height) = get_estimated_size(child, context.clone());
                 if child_width > max_width {
                     max_width = child_width;
                 }
@@ -46,9 +46,12 @@ pub fn get_estimated_size(node: &ShadowNode) -> (f64, f64) {
             (max_width, height)
         }
 
-        NodeKind::Text { content, font_size: _, font_weight: _ } => {
+        NodeKind::Text { content, font} => {
+            let font = context.get_native_font(&font);
             let label = Label::new();
             label.set_text(content);
+            label.set_font(font.os_font());
+
             label.objc.get(|handle|  unsafe {
                 let size: CGSize = msg_send![handle, intrinsicContentSize];
                 (size.width, size.height)
@@ -56,7 +59,7 @@ pub fn get_estimated_size(node: &ShadowNode) -> (f64, f64) {
         }
         
         NodeKind::Window { title: _ } => {
-            get_estimated_size(node.children.get(0).unwrap())
+            get_estimated_size(node.children.get(0).unwrap(), context.clone())
         }
 
         _ => {
@@ -66,8 +69,8 @@ pub fn get_estimated_size(node: &ShadowNode) -> (f64, f64) {
 
 }
 
-pub fn update_node_sizes(node: &ShadowNode, tree: &ShadowTree) {
-    let(width, height) = get_estimated_size(node);
+pub fn update_node_sizes(node: &ShadowNode, tree: &ShadowTree, context: Context) {
+    let(width, height) = get_estimated_size(node, context.clone());
     tree.set_size(
         node.taffy_id,
         taffy::Dimension::length(width as _),
@@ -77,7 +80,7 @@ pub fn update_node_sizes(node: &ShadowNode, tree: &ShadowTree) {
 
     // Update the children.
     for child in &node.children {
-        update_node_sizes( child, tree);
+        update_node_sizes( child, tree, context.clone());
     }
 }
 

@@ -17,8 +17,9 @@ taffy = "0.9.2"
 derivative = "2.2.0"
 
 cacao = { version = "0.3.2", optional = true }
+objc_id = { version = "0.1.1", optional = true }
 plist = { version = "1.8.0", optional = true }
 core-foundation = { version = "0.10.1", optional = true }
 
 [features]
-apple = ["dep:cacao", "dep:plist"]
+apple = ["dep:cacao", "dep:objc_id", "dep:plist"]

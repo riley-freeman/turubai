@@ -48,7 +48,7 @@ impl ExprElement {
         });
 
         let wrapped_children_function = quote! {
-            |modifiers| {#(#children)*}
+            move |modifiers| {#(#children)*}
         };
 
         let method_name = Ident::new(&format!("new_{}", self.required_args.len()), path.segments.last().unwrap().ident.span());
