@@ -11,7 +11,7 @@ impl Application for MyApplication {
 
         Box::new(turubai!(
             WindowTemplate(title: Some("Hello World! (Example)".to_string())) {
-                VStack(spacing: 16.0, alignment: HorizontalAlignment::Center) {
+                VStack(spacing: 4.0, alignment: HorizontalAlignment::Center) {
                     Text("Hello, World!"),
                     HStack(spacing: 16.0, text::font: font) {
                         Text("Crayon "),

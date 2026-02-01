@@ -3,7 +3,7 @@ use std::process::exit;
 use std::ptr::slice_from_raw_parts;
 use std::sync::{Arc, Mutex};
 
-use cacao::appkit::{App, AppDelegate};
+use cacao::appkit::{App, AppDelegate, window};
 use cacao::appkit::window::{Window, WindowConfig, WindowDelegate, WindowStyle};
 use cacao::color::Color;
 use cacao::core_foundation::bundle::{CFBundleGetIdentifier, CFBundleGetMainBundle};
@@ -56,10 +56,10 @@ impl Context {
     }
 
 
-    fn create_window(&self, root: ShadowNode, tree: ShadowTree) -> Window<TurubaiWindowDelegate> {
-        let title = match &root.kind {
+    fn create_window(&self, window_node: ShadowNode, root: ShadowNode, tree: ShadowTree) -> Window<TurubaiWindowDelegate> {
+        let title = match &window_node.kind {
             NodeKind::Window { title } => title.clone().unwrap_or_else(|| "Turubai App".to_string()),
-            _ => "Turubai App".to_string(),
+            _ => "Untitled Window".to_string(),
         };
 
         let mut config = WindowConfig::default();
@@ -95,15 +95,15 @@ impl AppDelegate for Context {
 
         let mut shadow_tree = ShadowTree::new();
 
-        let mut window_shadow = shadow_tree.create_node_from_element(window_element.as_ref());
+        let mut window_node = shadow_tree.create_node_from_element(window_element.as_ref());
 
-        let root_shadow = window_shadow.children.pop().unwrap();
+        let root_shadow = window_node.children.pop().unwrap();
         let (width, height) = get_estimated_size(&root_shadow, self.clone());
 
         update_node_sizes(&root_shadow, &shadow_tree, self.clone());
         shadow_tree.compute_layout(&root_shadow, width as _, height as _);
 
-        let window = self.create_window(root_shadow, shadow_tree);
+        let window = self.create_window(window_node, root_shadow, shadow_tree);
 
         self.inner.windows.lock().unwrap().push(window);
     }
