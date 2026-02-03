@@ -19,10 +19,13 @@ mod font;
 
 use crate::font::Font;
 use crate::pal::apple::font::NativeFont;
-use crate::pal::apple::measure::{get_estimated_size, update_node_sizes};
+use crate::pal::apple::measure::{request_dimensions, update_node_sizes};
 use crate::{Application, Backend};
 use crate::pal::{apple, DynContext};
 use crate::shadow::{NodeKind, ShadowNode, ShadowTree};
+
+static DEFAULT_WINDOW_WIDTH: f64 = 480.0;
+static DEFAULT_WINDOW_HEIGHT: f64 = 270.0;
 
 pub struct API;
 
@@ -98,9 +101,9 @@ impl AppDelegate for Context {
         let mut window_node = shadow_tree.create_node_from_element(window_element.as_ref());
 
         let root_shadow = window_node.children.pop().unwrap();
-        let (width, height) = get_estimated_size(&root_shadow, self.clone());
+        let (width, height) = request_dimensions(&root_shadow, self.clone(), DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT);
 
-        update_node_sizes(&root_shadow, &shadow_tree, self.clone());
+        update_node_sizes(&root_shadow, &shadow_tree, self.clone(), DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT);
         shadow_tree.compute_layout(&root_shadow, width as _, height as _);
 
         let window = self.create_window(window_node, root_shadow, shadow_tree);
@@ -219,15 +222,13 @@ impl TurubaiWindowDelegate {
         let content = View::new();
 
         // Calcualate the positions and sizes of the elements
-        let (available_width, available_height) = get_estimated_size(&root, context.clone());
+        let (available_width, available_height) = request_dimensions(&root, context.clone(), DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT);
         eprintln!("[DEBUG] Computed content size: {}x{}", available_width, available_height);
 
         // Render the root node
         let root_view = Self::render_node(&root, &tree, context.clone());
         content.add_subview(root_view.view());
 
-        // Must disable autoresizing mask translation to use Auto Layout constraints
-        root_view.view().set_translates_autoresizing_mask_into_constraints(false);
 
         LayoutConstraint::activate(&[
             root_view.view().center_x.constraint_equal_to(&content.center_x),
@@ -235,6 +236,8 @@ impl TurubaiWindowDelegate {
             root_view.view().width.constraint_equal_to_constant(available_width),
             root_view.view().height.constraint_equal_to_constant(available_height),
         ]);
+        // Must disable autoresizing mask translation to use Auto Layout constraints
+        root_view.view().set_translates_autoresizing_mask_into_constraints(false);
 
         // Add padding to content size
         let content_width = available_width;
@@ -277,21 +280,11 @@ impl TurubaiWindowDelegate {
 
                 let wrapper = View::new();
                 wrapper.add_subview(&label);
-
-                // Apply the coords from 
-                LayoutConstraint::activate(&[
-                    label.top.constraint_equal_to(&wrapper.top),
-                    label.bottom.constraint_equal_to(&wrapper.bottom),
-                    label.leading.constraint_equal_to(&wrapper.leading),
-                    label.trailing.constraint_equal_to(&wrapper.trailing),
-                ]);
                 wrapper.set_translates_autoresizing_mask_into_constraints(true);
-
-
                 NativeView::Text { wrapper, _label: label }
             }
 
-            NodeKind::HStack { spacing, alignment } => {
+            NodeKind::HStack { .. } => {
                 eprintln!("[DEBUG] rendering Horizontal Stack (Column)");
 
                 let rendered: Vec<NativeView> = node.children
@@ -299,7 +292,7 @@ impl TurubaiWindowDelegate {
                     .collect();
 
                 let view = View::new();
-                view.set_translates_autoresizing_mask_into_constraints(false);
+                view.set_translates_autoresizing_mask_into_constraints(true);
                 for cv in &rendered {
                     view.add_subview(cv.view());
                 }
@@ -307,7 +300,7 @@ impl TurubaiWindowDelegate {
                 NativeView::Container { view, _children: rendered }
             }
 
-            NodeKind::VStack { spacing, alignment } => {
+            NodeKind::VStack { .. } => {
                 eprintln!("[DEBUG] rendering Vertical Stack (Row)");
 
                 let rendered: Vec<NativeView> = node.children
@@ -315,7 +308,7 @@ impl TurubaiWindowDelegate {
                     .collect();
 
                 let view = View::new();
-                view.set_translates_autoresizing_mask_into_constraints(false);
+                view.set_translates_autoresizing_mask_into_constraints(true);
                 for cv in &rendered {
                     view.add_subview(cv.view());
                 }
@@ -328,35 +321,10 @@ impl TurubaiWindowDelegate {
             _ => {
                 unimplemented!()
             }
-
-            // NodeKind::View | NodeKind::Window { .. } => {
-            //     let view = View::new();
-            //     let mut children: Vec<NativeView> = Vec::new();
-
-            //     for shadow_child in &node.children {
-            //         let child  = Self::render_node(shadow_child, tree);
-            //         view.add_subview(child.view());
-
-            //         LayoutConstraint::activate(&[
-            //             child.view().top.constraint_equal_to(&view.top),
-            //             child.view().leading.constraint_equal_to(&view.leading),
-            //             child.view().trailing.constraint_equal_to(&view.trailing),
-            //             child.view().bottom.constraint_equal_to(&view.bottom),
-            //         ]);
-
-            //         children.push(child);
-            //     }
-
-            //     let native = NativeView::Container { view, _children: children };
-            //     native
-            // }
         };
-
         view.view().set_frame(frame);
         view
     }
-
-
 }
 
 impl WindowDelegate for TurubaiWindowDelegate {
@@ -365,7 +333,7 @@ impl WindowDelegate for TurubaiWindowDelegate {
     fn did_load(&mut self, window: Window) {
         println!("[DEBUG] Window did load!");
         window.set_content_view(&self.content);
-        window.set_content_size(self.content_width, self.content_height);
+        window.set_content_size(DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT);
         window.set_minimum_content_size(self.content_width, self.content_height);
 
         self.window = Some(window);
@@ -380,10 +348,8 @@ impl WindowDelegate for TurubaiWindowDelegate {
         let mut shadow_tree = self.shadow_tree.lock().unwrap();
         let nd = self.new_dimentions.lock().unwrap();
 
-        eprintln!("[DEBUG] Window resized to {}x{}", nd.width, nd.height);
-
         // Recompute layout with new dimensions
-        update_node_sizes(&self.root_node, &shadow_tree, self.context.clone());
+        update_node_sizes(&self.root_node, &shadow_tree, self.context.clone(), nd.width, nd.height);
         shadow_tree.compute_layout(&self.root_node, nd.width as f32, nd.height as f32);
 
         // Update all view frames from the new layout

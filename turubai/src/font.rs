@@ -34,7 +34,9 @@ pub struct Font {
 impl Font {
     pub fn new(name: &str, size: u32, weight: FontWeight, italic: bool, underline: bool) -> Self {
         let mut name = name.to_string();
-        name.push_str(&format!("-{:?}", weight));
+        if weight != FontWeight::Regular {
+            name.push_str(&format!("-{:?}", weight));
+        }
         if italic {
             name.push_str("-Italic");
         }

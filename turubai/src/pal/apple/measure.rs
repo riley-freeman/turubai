@@ -1,3 +1,5 @@
+use core::f64;
+
 use cacao::text::Label;
 use cacao::objc::{msg_send, sel, sel_impl};
 
@@ -13,13 +15,18 @@ struct CGSize {
     height: f64,
 }
 
-pub fn get_estimated_size(node: &ShadowNode, context: Context) -> (f64, f64) {
+pub fn request_dimensions(
+    node: &ShadowNode,
+    context: Context,
+    preferred_width: f64,
+    preferred_height: f64) -> (f64, f64)
+{
     match node.kind.clone() {
         NodeKind::HStack { spacing, alignment: _ } => {
             let mut width = 0.0;
             let mut max_height = 0.0;
             for child in &node.children {
-                let (child_width, child_height) = get_estimated_size(child, context.clone());
+                let (child_width, child_height) = request_dimensions(child, context.clone(), f64::NAN, preferred_height);
                 if child_height > max_height {
                     max_height = child_height;
                 }
@@ -35,7 +42,7 @@ pub fn get_estimated_size(node: &ShadowNode, context: Context) -> (f64, f64) {
             let mut height = 0.0;
 
             for child in &node.children {
-                let (child_width, child_height) = get_estimated_size(child, context.clone());
+                let (child_width, child_height) = request_dimensions(child, context.clone(), preferred_width, f64::NAN);
                 if child_width > max_width {
                     max_width = child_width;
                 }
@@ -59,7 +66,7 @@ pub fn get_estimated_size(node: &ShadowNode, context: Context) -> (f64, f64) {
         }
         
         NodeKind::Window { title: _ } => {
-            get_estimated_size(node.children.get(0).unwrap(), context.clone())
+            request_dimensions(node.children.get(0).unwrap(), context.clone(), preferred_width, preferred_height)
         }
 
         _ => {
@@ -69,8 +76,8 @@ pub fn get_estimated_size(node: &ShadowNode, context: Context) -> (f64, f64) {
 
 }
 
-pub fn update_node_sizes(node: &ShadowNode, tree: &ShadowTree, context: Context) {
-    let(width, height) = get_estimated_size(node, context.clone());
+pub fn update_node_sizes(node: &ShadowNode, tree: &ShadowTree, context: Context, available_width: f64, available_height: f64) {
+    let(width, height) = request_dimensions(node, context.clone(), available_width, available_height);
     tree.set_size(
         node.taffy_id,
         taffy::Dimension::length(width as _),
@@ -80,7 +87,7 @@ pub fn update_node_sizes(node: &ShadowNode, tree: &ShadowTree, context: Context)
 
     // Update the children.
     for child in &node.children {
-        update_node_sizes( child, tree, context.clone());
+        update_node_sizes( child, tree, context.clone(), available_width, available_height);
     }
 }
 
