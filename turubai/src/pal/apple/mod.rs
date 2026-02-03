@@ -85,7 +85,7 @@ impl Context {
         if let Some(font) = fonts.get(&font) {
             font.clone()
         } else {
-            let native_font = NativeFont::new(&font.name(), font.size());
+            let native_font = NativeFont::new(&font.name(), font.size(), font.weight(),font.is_italic());
             fonts.insert(font.clone(), native_font.clone());
             native_font
         }

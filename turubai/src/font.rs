@@ -19,11 +19,10 @@ pub enum FontWeight {
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct FontInner {
-    name: String,
+    family: String,
     size: u32,
     weight: FontWeight,
     italicized: bool,
-    underlined: bool,
 }
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
@@ -32,21 +31,14 @@ pub struct Font {
 }
 
 impl Font {
-    pub fn new(name: &str, size: u32, weight: FontWeight, italic: bool, underline: bool) -> Self {
-        let mut name = name.to_string();
-        if weight != FontWeight::Regular {
-            name.push_str(&format!("-{:?}", weight));
-        }
-        if italic {
-            name.push_str("-Italic");
-        }
+    pub fn new(family: &str, size: u32, weight: FontWeight, italic: bool) -> Self {
+        let mut fam = family.to_string();
 
         let inner = FontInner {
-            name: name.to_string(),
+            family: fam.to_string(),
             size,
             weight,
             italicized: italic,
-            underlined: underline,
         };
 
         Self {
@@ -55,29 +47,25 @@ impl Font {
     }
 
     pub fn name(&self) -> String {
-        self.inner.name.to_string()
+        self.inner.family.to_string()
     }
 
     pub fn size(&self) -> f32 {
         self.inner.size as _
     }
+
+    pub fn weight(&self) -> FontWeight {
+        self.inner.weight
+    }
+
+    pub fn is_italic(&self) -> bool {
+        self.inner.italicized
+    }
 }
 
 impl Default for Font {
     fn default() -> Self {
-        Self::new("Arial", 12, FontWeight::Regular, false, false)
+        Self::new("Arial", 12, FontWeight::Regular, false)
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use crate::font::Font;
-
-    #[test]
-    fn font_name() {
-        let font = Font::new("Ariel", 16, super::FontWeight::Regular, false, false);
-        assert_eq!(font.name(), "Ariel-Regular");
-    }
-}
-
 

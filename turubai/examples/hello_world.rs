@@ -7,8 +7,8 @@ struct MyApplication {
 
 impl Application for MyApplication {
     fn markup(&self) -> Box<dyn Element> {
-        let courier_font = Font::new("Courier New", 12, turubai::font::FontWeight::Regular, false, false);
-        let arial_font = Font::new("Arial", 16, turubai::font::FontWeight::Black, false, false);
+        let courier_font = Font::new("Courier New", 12, turubai::font::FontWeight::Regular, false);
+        let arial_font = Font::new("Inter", 16, turubai::font::FontWeight::Black, true);
 
         Box::new(turubai!(
             WindowTemplate(title: Some("Hello World! (Example)".to_string())) {
@@ -20,7 +20,7 @@ impl Application for MyApplication {
                             Text("🎨"),
                             Text("Crayon"),
                         },
-                        Text("2026 Ngishu, Mark Sadiki."),
+                        Text("Now supports italicized variable fonts."),
                     }
                 }
             },
