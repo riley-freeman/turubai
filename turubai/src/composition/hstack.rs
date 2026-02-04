@@ -24,7 +24,10 @@ impl HStack {
         }
     }
 
-    pub fn new_0(modifiers: Modifiers, children: impl FnOnce(Modifiers) -> Vec<Box<dyn Element>>) -> Self {
+    pub fn new_0(
+        modifiers: Modifiers,
+        children: impl FnOnce(Modifiers) -> Vec<Box<dyn Element>>,
+    ) -> Self {
         let child_elements = children(modifiers.fork());
         Self::new(modifiers, child_elements)
     }
@@ -55,4 +58,10 @@ impl Element for HStack {
             f(child.as_ref());
         }
     }
+}
+
+#[derive(Debug, Default, Clone, Copy, PartialEq)]
+pub struct HStackModifiers {
+    pub spacing: f64,
+    pub alignment: super::VerticalAlignment,
 }

@@ -8,7 +8,6 @@ use cacao::foundation::{id, NSString};
 use cacao::objc::runtime::Object;
 use cacao::objc::{class, msg_send, sel, sel_impl};
 use objc_id::ShareId;
-use plist::Dictionary;
 
 use crate::font::FontWeight;
 
@@ -41,7 +40,7 @@ impl NativeFont {
                 (wght_key.as_CFType(), wght_value.as_CFType()),
                 (ital_key.as_CFType(), ital_value.as_CFType()),
             ]);
-            
+
             let family_attr_key = CFString::new("NSFontFamilyAttribute");
             let name_attr_key = CFString::new("NSFontNameAttribute");
             let size_attr_key = CFString::new("NSFontSizeAttribute");
@@ -52,12 +51,16 @@ impl NativeFont {
                 (size_attr_key.as_CFType(), cf_size.as_CFType()),
                 (variation_attr_key.as_CFType(), variation_dict.as_CFType()),
             ]);
-            let desc: *mut Object = msg_send![class!(NSFontDescriptor), fontDescriptorWithFontAttributes: attributes];
+            let desc: *mut Object =
+                msg_send![class!(NSFontDescriptor), fontDescriptorWithFontAttributes: attributes];
             let font_ptr: id = msg_send![class!(NSFont), fontWithDescriptor: desc size: cg_size];
 
             if font_ptr.is_null() {
                 // Font not found - fall back to system font
-                eprintln!("[DEBUG] Font family '{}' not found, falling back to system font", family);
+                eprintln!(
+                    "[DEBUG] Font family '{}' not found, falling back to system font",
+                    family
+                );
                 cacao::text::Font::system(size as f64)
             } else {
                 cacao::text::Font(ShareId::from_ptr(font_ptr))
@@ -78,5 +81,3 @@ impl NativeFont {
         self.size
     }
 }
-
-

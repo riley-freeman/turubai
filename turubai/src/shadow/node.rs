@@ -1,6 +1,11 @@
-use taffy::{NodeId, Style, FlexDirection, AlignItems, JustifyContent};
+use taffy::{AlignItems, FlexDirection, JustifyContent, NodeId, Style};
 
-use crate::{composition::{HorizontalAlignment, VerticalAlignment}, font::{Font, FontWeight}, shadow::conv::{self, conv_h_alignment, conv_v_alignment}};
+use crate::{
+    color::Color,
+    composition::{HorizontalAlignment, VerticalAlignment},
+    font::{Font, FontWeight},
+    shadow::conv::{self, conv_h_alignment, conv_v_alignment},
+};
 
 /// A node in the shadow tree - platform agnostic description of a UI element
 #[derive(Debug)]
@@ -19,22 +24,21 @@ pub struct ShadowNode {
 #[derive(Debug, Clone)]
 pub enum NodeKind {
     /// A window container
-    Window {
-        title: Option<String>,
-    },
+    Window { title: Option<String> },
     /// A text label
     Text {
         content: String,
-        font: Font, 
+        font: Font,
+        color: Color,
     },
     /// A horizontal stack (HStack)
     HStack {
-        spacing: f32,
+        spacing: f64,
         alignment: VerticalAlignment,
     },
     /// A vertical stack (VStack)
     VStack {
-        spacing: f32,
+        spacing: f64,
         alignment: HorizontalAlignment,
     },
     /// A generic container view
@@ -48,24 +52,25 @@ pub struct ShadowDescriptor {
 }
 
 impl ShadowDescriptor {
-    pub fn text(content: impl Into<String>, font: Font) -> Self {
+    pub fn text(content: impl Into<String>, font: Font, color: Color) -> Self {
         Self {
             kind: NodeKind::Text {
                 content: content.into(),
                 font,
+                color,
             },
             style: Style::default(),
         }
     }
 
-    pub fn hstack(spacing: f32, alignment: VerticalAlignment) -> Self {
+    pub fn hstack(spacing: f64, alignment: VerticalAlignment) -> Self {
         Self {
             kind: NodeKind::HStack { spacing, alignment },
             style: Style {
                 flex_direction: FlexDirection::Row,
                 align_items: Some(conv_v_alignment(alignment)),
                 gap: taffy::Size {
-                    width: taffy::LengthPercentage::length(spacing),
+                    width: taffy::LengthPercentage::length(spacing as _),
                     height: taffy::LengthPercentage::length(0.0),
                 },
                 ..Default::default()
@@ -73,7 +78,7 @@ impl ShadowDescriptor {
         }
     }
 
-    pub fn vstack(spacing: f32, alignment: HorizontalAlignment) -> Self {
+    pub fn vstack(spacing: f64, alignment: HorizontalAlignment) -> Self {
         Self {
             kind: NodeKind::VStack { spacing, alignment },
             style: Style {
@@ -81,7 +86,7 @@ impl ShadowDescriptor {
                 align_items: Some(conv_h_alignment(alignment)),
                 gap: taffy::Size {
                     width: taffy::LengthPercentage::length(0.0),
-                    height: taffy::LengthPercentage::length(spacing),
+                    height: taffy::LengthPercentage::length(spacing as _),
                 },
                 ..Default::default()
             },

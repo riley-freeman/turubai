@@ -1,9 +1,10 @@
-pub mod elements;
+pub mod color;
 pub mod composition;
-pub mod runtime;
+pub mod elements;
 pub mod font;
-pub mod shadow;
 pub mod pal;
+pub mod runtime;
+pub mod shadow;
 
 #[cfg(test)]
 mod tests;
@@ -12,11 +13,11 @@ use elements::Element;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Ord, PartialOrd)]
 pub enum Backend {
-    WinUI   = 0,
-    Apple   = 1,
+    WinUI = 0,
+    Apple = 1,
     Android = 2,
     Wayland = 3,
-    X11     = 4,
+    X11 = 4,
 }
 
 pub trait Application: Send + Sync {
@@ -26,7 +27,7 @@ pub trait Application: Send + Sync {
 pub enum Unit {
     Pixels(f64),
     Em(f64),
-    Percent(f64)
+    Percent(f64),
 }
 
 impl Unit {
@@ -42,8 +43,3 @@ impl Unit {
         Self::Percent(x)
     }
 }
-
-
-
-
-

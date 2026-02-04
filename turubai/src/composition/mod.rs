@@ -1,21 +1,8 @@
-mod vstack;
 mod hstack;
+mod vstack;
 
-pub use vstack::*;
 pub use hstack::*;
-
-#[derive(Debug, Default, Clone, Copy, PartialEq)]
-pub struct VStackModifiers {
-    pub spacing: f32,
-    pub alignment: HorizontalAlignment,
-}
-
-
-#[derive(Debug, Default, Clone, Copy, PartialEq)]
-pub struct HStackModifiers {
-    pub spacing: f32,
-    pub alignment: VerticalAlignment,
-}
+pub use vstack::*;
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub enum HorizontalAlignment {
@@ -32,4 +19,3 @@ pub enum VerticalAlignment {
     Center,
     Bottom,
 }
-

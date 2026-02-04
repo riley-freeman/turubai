@@ -1,6 +1,7 @@
 use std::sync::Arc;
 use std::sync::Mutex;
 
+use crate::color::Color;
 use crate::elements::{Element, Modifiers};
 use crate::font::Font;
 use crate::font::FontWeight;
@@ -26,7 +27,11 @@ impl Text {
         Self::from(inner)
     }
 
-    pub fn new_1(contents: &str, modifiers: Modifiers, children: fn(Modifiers) -> Vec<Box<dyn Element>>) -> Self {
+    pub fn new_1(
+        contents: &str,
+        modifiers: Modifiers,
+        children: fn(Modifiers) -> Vec<Box<dyn Element>>,
+    ) -> Self {
         let inner = TextInner {
             contents: String::from(contents),
             modifiers: modifiers.clone(),
@@ -39,7 +44,7 @@ impl Text {
 impl From<TextInner> for Text {
     fn from(value: TextInner) -> Self {
         Self {
-            inner: Arc::new(Mutex::new(value))
+            inner: Arc::new(Mutex::new(value)),
         }
     }
 }
@@ -56,10 +61,12 @@ impl Element for Text {
     fn shadow_descriptor(&self) -> ShadowDescriptor {
         let inner = self.inner.lock().unwrap();
         let mods_inner = inner.modifiers.lock().unwrap();
+        let text_mods = &mods_inner.text;
 
         ShadowDescriptor::text(
             inner.contents.clone(),
-            mods_inner.text.font.clone(),
+            text_mods.font.clone(),
+            text_mods.color.clone(),
         )
     }
 
@@ -83,7 +90,17 @@ pub enum TextAlign {
     Trailing,
 }
 
-#[derive(Default, Clone, PartialEq)]
+#[derive(Clone, PartialEq)]
 pub struct TextModifiers {
     pub font: Font,
+    pub color: Color,
+}
+
+impl Default for TextModifiers {
+    fn default() -> Self {
+        Self {
+            color: Color::Text,
+            font: Font::default(),
+        }
+    }
 }

@@ -1,9 +1,15 @@
-use turubai::{Application, composition::{HStack, HorizontalAlignment, VStack}, elements::{Element, Text}, runtime::WindowTemplate, font::Font};
+use turubai::{
+    color::Color,
+    composition::{HStack, HorizontalAlignment, VStack},
+    elements::{Element, Text},
+    font::Font,
+    runtime::WindowTemplate,
+    Application,
+};
 use turubai_macros::turubai;
 
 #[derive(Default)]
-struct MyApplication {
-}
+struct MyApplication {}
 
 impl Application for MyApplication {
     fn markup(&self) -> Box<dyn Element> {
@@ -16,19 +22,25 @@ impl Application for MyApplication {
                     Text("Hello, World!", font: courier_font),
                     VStack(spacing: 4.0) {
                         HStack(spacing: 16.0, text::font: arial_font) {
-                            Text("️Turubai"),
+                            HStack(spacing: 0.0) {
+                                Text("T", color: Color::SystemRed),
+                                Text("U", color: Color::SystemOrange),
+                                Text("R", color: Color::SystemYellow),
+                                Text("U", color: Color::SystemGreen),
+                                Text("B", color: Color::SystemBlue),
+                                Text("A", color: Color::SystemIndigo),
+                                Text("I", color: Color::SystemPurple),
+                            },
                             Text("🎨"),
-                            Text("Crayon"),
                         },
-                        Text("Now supports italicized variable fonts."),
+                        Text("Now supports colors!"),
                     }
                 }
             },
         ))
     }
-} 
+}
 
 fn main() {
     turubai::runtime::turubai_main(Box::new(MyApplication::default()));
 }
-
