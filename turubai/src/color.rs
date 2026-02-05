@@ -10,6 +10,7 @@ pub enum Color {
     SystemBlue,
     SystemIndigo,
     SystemPurple,
+    SystemPink,
     Custom { r: f32, g: f32, b: f32, a: f32 },
 }
 
@@ -39,6 +40,9 @@ impl Hash for Color {
             }
             Color::SystemPurple => {
                 "system_violet".hash(state);
+            }
+            Color::SystemPink => {
+                "system_pink".hash(state);
             }
             Color::Custom { r, g, b, a } => {
                 r.to_bits().hash(state);

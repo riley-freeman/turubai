@@ -15,28 +15,26 @@ impl NativeColor {
             crate::color::Color::SystemRed => Self {
                 color: Color::SystemRed,
             },
-
             crate::color::Color::SystemOrange => Self {
                 color: Color::SystemOrange,
             },
-
             crate::color::Color::SystemYellow => Self {
                 color: Color::SystemYellow,
             },
-
             crate::color::Color::SystemGreen => Self {
                 color: Color::SystemGreen,
             },
-
             crate::color::Color::SystemBlue => Self {
                 color: Color::SystemBlue,
             },
-
             crate::color::Color::SystemIndigo => Self {
                 color: Color::SystemIndigo,
             },
             crate::color::Color::SystemPurple => Self {
                 color: Color::SystemPurple,
+            },
+            crate::color::Color::SystemPink => Self {
+                color: Color::SystemPink,
             },
 
             crate::color::Color::Custom { r, g, b, a } => Self {

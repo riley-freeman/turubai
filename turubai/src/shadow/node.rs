@@ -3,6 +3,7 @@ use taffy::{AlignItems, FlexDirection, JustifyContent, NodeId, Style};
 use crate::{
     color::Color,
     composition::{HorizontalAlignment, VerticalAlignment},
+    elements::TextDecoration,
     font::{Font, FontWeight},
     shadow::conv::{self, conv_h_alignment, conv_v_alignment},
 };
@@ -30,6 +31,7 @@ pub enum NodeKind {
         content: String,
         font: Font,
         color: Color,
+        decoration: TextDecoration,
     },
     /// A horizontal stack (HStack)
     HStack {
@@ -52,12 +54,18 @@ pub struct ShadowDescriptor {
 }
 
 impl ShadowDescriptor {
-    pub fn text(content: impl Into<String>, font: Font, color: Color) -> Self {
+    pub fn text(
+        content: impl Into<String>,
+        font: Font,
+        color: Color,
+        decoration: TextDecoration,
+    ) -> Self {
         Self {
             kind: NodeKind::Text {
                 content: content.into(),
                 font,
                 color,
+                decoration,
             },
             style: Style::default(),
         }

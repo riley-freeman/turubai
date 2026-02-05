@@ -83,7 +83,8 @@ impl Context {
                 content,
                 font,
                 color,
-            } => render_text(content, font, color, node, context.clone()),
+                decoration,
+            } => render_text(content, font, color, decoration, node, context.clone()),
             NodeKind::HStack { .. } => render_h_stack(node, tree, context.clone()),
             NodeKind::VStack { .. } => render_v_stack(node, tree, context.clone()),
 
@@ -235,6 +236,8 @@ enum NativeView {
         wrapper: View,
         _label: Label,
         _font: Arc<NativeFont>,
+        underline_color: Option<Arc<NativeColor>>,
+        strike_through_color: Option<Arc<NativeColor>>,
     },
 }
 

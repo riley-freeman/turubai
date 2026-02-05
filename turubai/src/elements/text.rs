@@ -67,6 +67,7 @@ impl Element for Text {
             inner.contents.clone(),
             text_mods.font.clone(),
             text_mods.color.clone(),
+            text_mods.decoration.clone(),
         )
     }
 
@@ -94,6 +95,7 @@ pub enum TextAlign {
 pub struct TextModifiers {
     pub font: Font,
     pub color: Color,
+    pub decoration: TextDecoration,
 }
 
 impl Default for TextModifiers {
@@ -101,6 +103,39 @@ impl Default for TextModifiers {
         Self {
             color: Color::Text,
             font: Font::default(),
+            decoration: TextDecoration::default(),
         }
     }
+}
+
+#[derive(Clone, PartialEq, Eq, Hash, Debug, Default)]
+pub struct TextDecoration {
+    pub underline: TextDecorationLine,
+    pub strike_through: TextDecorationLine,
+}
+
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+pub struct TextDecorationLine {
+    pub style: TextLineStyle,
+    pub color: Color,
+}
+
+impl Default for TextDecorationLine {
+    fn default() -> Self {
+        Self {
+            style: TextLineStyle::None,
+            color: Color::Text,
+        }
+    }
+}
+
+#[derive(Clone, PartialEq, Eq, Hash, Debug, Default)]
+pub enum TextLineStyle {
+    #[default]
+    None,
+    Single,
+    Thick,
+    Double,
+    Dotted,
+    Dashed,
 }
