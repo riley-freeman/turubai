@@ -8,6 +8,7 @@ use cacao::appkit::{window, App, AppDelegate};
 use cacao::core_foundation::bundle::{CFBundleGetIdentifier, CFBundleGetMainBundle};
 use cacao::core_graphics::display::{CGPoint, CGRect, CGSize};
 use cacao::layout::{Layout, LayoutConstraint};
+use cacao::objc::{msg_send, sel, sel_impl};
 use cacao::text::Label;
 use cacao::view::View;
 
@@ -23,12 +24,13 @@ use crate::color::Color;
 use crate::font::Font;
 use crate::pal::apple::color::NativeColor;
 use crate::pal::apple::font::NativeFont;
-use crate::pal::apple::measure::{request_dimensions, update_node_sizes};
-use crate::pal::apple::stack::{render_h_stack, render_v_stack};
+use crate::pal::apple::measure::{request_dimensions, request_minimum_dimensions, update_node_sizes};
+use crate::pal::apple::stack::{render_h_stack, render_spacer, render_v_stack};
 use crate::pal::apple::text::render_text;
 use crate::pal::{apple, DynContext};
 use crate::shadow::{NodeKind, ShadowNode, ShadowTree};
-use crate::{Application, Backend};
+use crate::units::Percent;
+use crate::{Application, Backend, Unit};
 
 static DEFAULT_WINDOW_WIDTH: f64 = 480.0;
 static DEFAULT_WINDOW_HEIGHT: f64 = 270.0;
@@ -87,6 +89,7 @@ impl Context {
             } => render_text(content, font, color, decoration, node, context.clone()),
             NodeKind::HStack { .. } => render_h_stack(node, tree, context.clone()),
             NodeKind::VStack { .. } => render_v_stack(node, tree, context.clone()),
+            NodeKind::Spacer { .. } => render_spacer(),
 
             _ => {
                 unimplemented!()
@@ -163,12 +166,14 @@ impl AppDelegate for Context {
         let mut window_node = shadow_tree.create_node_from_element(window_element.as_ref());
 
         let root_shadow = window_node.children.pop().unwrap();
-        let (width, height) = request_dimensions(
+        let (width_unit, height_unit) = request_dimensions(
             &root_shadow,
             self.clone(),
             DEFAULT_WINDOW_WIDTH,
             DEFAULT_WINDOW_HEIGHT,
         );
+        let width = width_unit.to_pixels(Some(DEFAULT_WINDOW_WIDTH));
+        let height = height_unit.to_pixels(Some(DEFAULT_WINDOW_HEIGHT));
 
         update_node_sizes(
             &root_shadow,
@@ -177,7 +182,7 @@ impl AppDelegate for Context {
             DEFAULT_WINDOW_WIDTH,
             DEFAULT_WINDOW_HEIGHT,
         );
-        shadow_tree.compute_layout(&root_shadow, width as _, height as _);
+        shadow_tree.compute_layout(&root_shadow, width as f32, height as f32);
 
         let window = self.create_window(window_node, root_shadow, shadow_tree);
 
@@ -231,6 +236,8 @@ enum NativeView {
         view: View,
         _children: Vec<NativeView>,
     },
+    /// A view that separates.
+    Spacer { view: View },
     /// A text label wrapped in a view
     Text {
         wrapper: View,
@@ -246,6 +253,7 @@ impl NativeView {
     fn view(&self) -> &View {
         match self {
             NativeView::Container { view, .. } => view,
+            NativeView::Spacer { view } => view,
             NativeView::Text { wrapper, .. } => wrapper,
         }
     }
@@ -287,72 +295,159 @@ pub struct TurubaiWindowDelegate {
     _root_view: NativeView,
     content_width: f64,
     content_height: f64,
+
+    // Active layout constraints (stored so they can be updated on resize)
+    active_constraints: Mutex<Vec<LayoutConstraint>>,
 }
 
 impl TurubaiWindowDelegate {
-    fn new(root: ShadowNode, mut tree: ShadowTree, context: Context) -> Self {
+    /// Build layout constraints for the root view based on content dimensions
+    fn build_constraints(
+        root_view: &NativeView,
+        content: &View,
+        width_unit: &dyn Unit,
+        height_unit: &dyn Unit,
+        available_width: f64,
+        available_height: f64,
+    ) -> Vec<LayoutConstraint> {
+        let mut constraints = Vec::new();
+
+        let width_is_percent = width_unit.downcast_ref::<Percent>().is_some();
+        let height_is_percent = height_unit.downcast_ref::<Percent>().is_some();
+
+        // X axis: if width is percentage, pin left/right; otherwise center horizontally
+        if width_is_percent {
+            constraints.push(root_view.view().left.constraint_equal_to(&content.left));
+            constraints.push(root_view.view().right.constraint_equal_to(&content.right));
+        } else {
+            constraints.push(
+                root_view
+                    .view()
+                    .center_x
+                    .constraint_equal_to(&content.center_x),
+            );
+            constraints.push(
+                root_view
+                    .view()
+                    .width
+                    .constraint_equal_to_constant(available_width),
+            );
+        }
+
+        // Y axis: if height is percentage, pin top/bottom; otherwise center vertically
+        if height_is_percent {
+            constraints.push(root_view.view().top.constraint_equal_to(&content.top));
+            constraints.push(root_view.view().bottom.constraint_equal_to(&content.bottom));
+        } else {
+            constraints.push(
+                root_view
+                    .view()
+                    .center_y
+                    .constraint_equal_to(&content.center_y),
+            );
+            constraints.push(
+                root_view
+                    .view()
+                    .height
+                    .constraint_equal_to_constant(available_height),
+            );
+        }
+
+        constraints
+    }
+
+    fn new(root: ShadowNode, tree: ShadowTree, context: Context) -> Self {
         eprintln!("[DEBUG] TurubaiWindowDelegate::new called");
         eprintln!("[DEBUG] Root node kind: {:?}", root.kind);
         eprintln!("[DEBUG] Root has {} children", root.children.len());
 
         let content = View::new();
 
-        // Calcualate the positions and sizes of the elements
-        let (available_width, available_height) = request_dimensions(
+        // Calculate the positions and sizes of the elements
+        let (width_unit, height_unit) = request_dimensions(
             &root,
             context.clone(),
             DEFAULT_WINDOW_WIDTH,
             DEFAULT_WINDOW_HEIGHT,
         );
+        let available_width = width_unit.to_pixels(Some(DEFAULT_WINDOW_WIDTH));
+        let available_height = height_unit.to_pixels(Some(DEFAULT_WINDOW_HEIGHT));
+
+        // Calculate minimum content size (spacers treated as 0)
+        let (min_width, min_height) = request_minimum_dimensions(
+            &root,
+            context.clone(),
+            DEFAULT_WINDOW_WIDTH,
+        );
         eprintln!(
-            "[DEBUG] Computed content size: {}x{}",
-            available_width, available_height
+            "[DEBUG] Computed content size: {}x{}, minimum: {}x{}",
+            available_width, available_height, min_width, min_height
         );
 
         // Render the root node
         let root_view = Context::render_node(&root, &tree, context.clone());
         content.add_subview(root_view.view());
 
-        LayoutConstraint::activate(&[
-            root_view
-                .view()
-                .center_x
-                .constraint_equal_to(&content.center_x),
-            root_view
-                .view()
-                .center_y
-                .constraint_equal_to(&content.center_y),
-            root_view
-                .view()
-                .width
-                .constraint_equal_to_constant(available_width),
-            root_view
-                .view()
-                .height
-                .constraint_equal_to_constant(available_height),
-        ]);
+        // Build and activate constraints
+        let constraints = Self::build_constraints(
+            &root_view,
+            &content,
+            width_unit.as_ref(),
+            height_unit.as_ref(),
+            available_width,
+            available_height,
+        );
+        LayoutConstraint::activate(&constraints);
+
         // Must disable autoresizing mask translation to use Auto Layout constraints
         root_view
             .view()
             .set_translates_autoresizing_mask_into_constraints(false);
-
-        // Add padding to content size
-        let content_width = available_width;
-        let content_height = available_height;
 
         Self {
             context,
             content,
             window: None,
 
-            new_dimentions: Mutex::new(CGSize::default()),
+            new_dimentions: Mutex::new(CGSize::new(DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT)),
             shadow_tree: Mutex::new(tree),
             root_node: root,
 
             _root_view: root_view,
-            content_width,
-            content_height,
+            content_width: min_width,
+            content_height: min_height,
+
+            active_constraints: Mutex::new(constraints),
         }
+    }
+
+    /// Update constraints based on new dimensions
+    fn update_constraints(&self, width: f64, height: f64) {
+        // Recalculate dimensions
+        let (width_unit, height_unit) =
+            request_dimensions(&self.root_node, self.context.clone(), width, height);
+        let available_width = width_unit.to_pixels(Some(width));
+        let available_height = height_unit.to_pixels(Some(height));
+
+        // Deactivate old constraints
+        {
+            let old_constraints = self.active_constraints.lock().unwrap();
+            LayoutConstraint::deactivate(&old_constraints);
+        }
+
+        // Build and activate new constraints
+        let new_constraints = Self::build_constraints(
+            &self._root_view,
+            &self.content,
+            width_unit.as_ref(),
+            height_unit.as_ref(),
+            available_width,
+            available_height,
+        );
+        LayoutConstraint::activate(&new_constraints);
+
+        // Store new constraints
+        *self.active_constraints.lock().unwrap() = new_constraints;
     }
 }
 
@@ -375,21 +470,29 @@ impl WindowDelegate for TurubaiWindowDelegate {
 
     fn did_resize(&self) {
         let mut shadow_tree = self.shadow_tree.lock().unwrap();
-        let nd = self.new_dimentions.lock().unwrap();
 
-        // Recompute layout with new dimensions
+        // Get actual content view bounds (excludes title bar)
+        let content_frame: CGRect = self.content.objc.get(|view| unsafe {
+            msg_send![view, bounds]
+        });
+        let layout_width = content_frame.size.width;
+        let layout_height = content_frame.size.height;
+
+        // Update Auto Layout constraints for new dimensions
+        self.update_constraints(layout_width, layout_height);
+
+        // Recompute taffy layout with content view dimensions
         update_node_sizes(
             &self.root_node,
             &shadow_tree,
             self.context.clone(),
-            nd.width,
-            nd.height,
+            layout_width,
+            layout_height,
         );
-        shadow_tree.compute_layout(&self.root_node, nd.width as f32, nd.height as f32);
+        shadow_tree.compute_layout(&self.root_node, layout_width as f32, layout_height as f32);
 
-        // Update all view frames from the new layout
-        // Skip the root view since it's positioned by centering constraints
+        // Update all view frames from the new layout (including root)
         self._root_view
-            .update_frames(&self.root_node, &shadow_tree, true);
+            .update_frames(&self.root_node, &shadow_tree, false);
     }
 }

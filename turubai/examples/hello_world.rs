@@ -1,6 +1,6 @@
 use turubai::{
     color::Color,
-    composition::{HStack, HorizontalAlignment, VStack},
+    composition::{HStack, HorizontalAlignment, Spacer, VStack},
     elements::{Element, Text, TextDecoration, TextDecorationLine, TextLineStyle},
     font::Font,
     runtime::WindowTemplate,
@@ -16,23 +16,7 @@ impl Application for MyApplication {
         let courier_font = Font::new("Courier New", 12, turubai::font::FontWeight::Regular, false);
         let arial_font = Font::new("Inter", 16, turubai::font::FontWeight::Black, true);
 
-        let strike_though = TextDecoration {
-            strike_through: TextDecorationLine {
-                style: TextLineStyle::Single,
-                color: Color::SystemRed,
-            },
-            ..Default::default()
-        };
-
-        let underline = TextDecoration {
-            underline: TextDecorationLine {
-                style: TextLineStyle::Double,
-                ..Default::default()
-            },
-            ..Default::default()
-        };
-
-        let thick = TextDecoration {
+        let thick_decoration = TextDecoration {
             underline: TextDecorationLine {
                 color: Color::SystemPink,
                 style: TextLineStyle::Thick,
@@ -41,13 +25,16 @@ impl Application for MyApplication {
         };
 
         Box::new(turubai!(
-            WindowTemplate(title: Some("Hello World! (Example)".to_string())) {
+            WindowTemplate(title: Some("Crayon Turubai!".to_string())) {
                 VStack(spacing: 0.0, alignment: HorizontalAlignment::Center) {
-                    Text("Hello, World!", font: courier_font),
+                    // Text("Hello, World!", font: courier_font.clone()),
+                    // Dummy text to push the content down
+                    Text(" ", font: courier_font.clone()),
+                    Spacer(),
                     VStack(spacing: 2.0) {
-                        HStack(spacing: 8.0, text::font: arial_font) {
+                        HStack(spacing: 8.0, text::font: arial_font.clone()) {
                             Text("CRAYON"),
-                            HStack(spacing: 0.0, text::decoration: thick) {
+                            HStack(spacing: 0.0, text::decoration: thick_decoration.clone()) {
                                 Text("T", color: Color::SystemRed),
                                 Text("U", color: Color::SystemOrange),
                                 Text("R", color: Color::SystemYellow),
@@ -62,7 +49,10 @@ impl Application for MyApplication {
                         //     Text("colors", decoration: strike_though),
                         //     Text(" lines!", decoration: underline),
                         // }
-                    }
+                    },
+                    Spacer(),
+                    Text("We support Spacers!", font: courier_font.clone()),
+                    Text("(C) 2026 Sadiki Industries!", font: courier_font.clone()),
                 }
             },
         ))

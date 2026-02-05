@@ -19,25 +19,29 @@ use crate::font::Font;
 use crate::pal::apple::color::NativeColor;
 use crate::pal::apple::{Context, NativeView};
 use crate::shadow::{NodeKind, ShadowNode};
+use crate::units::Pixels;
+use crate::Unit;
 
 use cacao::objc::{class, msg_send, sel, sel_impl};
 
 pub fn request_dimensions(
     node: &ShadowNode,
     context: Context,
-    preferred_width: f64,
-    preferred_height: f64,
-) -> (f64, f64) {
+    _available_width: f64,
+    _available_height: f64,
+) -> (Box<dyn Unit>, Box<dyn Unit>) {
     if let NodeKind::Text { content, font, .. } = &node.kind {
         let font = context.get_native_font(font);
         let label = Label::new();
         label.set_text(content);
         label.set_font(font.os_font());
 
-        label.objc.get(|handle| unsafe {
+        let (width, height) = label.objc.get(|handle| unsafe {
             let size: CGSize = msg_send![handle, intrinsicContentSize];
             (size.width, size.height)
-        })
+        });
+
+        (Box::new(Pixels::new(width)), Box::new(Pixels::new(height)))
     } else {
         unimplemented!()
     }
@@ -57,12 +61,6 @@ pub fn render_text(
     let native_color = context.get_native_color(color);
 
     let cf_content = CFString::new(content);
-
-    let single_line = CFNumber::from(1);
-    let thick_line = CFNumber::from(2);
-    let double_line = CFNumber::from(9);
-    let dotted_line = CFNumber::from(257);
-    let dashed_line = CFNumber::from(513);
 
     let underline_attr = CFString::new("NSUnderline");
     let underline_color_attr = CFString::new("NSUnderlineColor");

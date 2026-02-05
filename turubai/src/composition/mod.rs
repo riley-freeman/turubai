@@ -1,7 +1,9 @@
 mod hstack;
+mod spacer;
 mod vstack;
 
 pub use hstack::*;
+pub use spacer::*;
 pub use vstack::*;
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]

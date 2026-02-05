@@ -25,7 +25,9 @@ pub struct ShadowNode {
 #[derive(Debug, Clone)]
 pub enum NodeKind {
     /// A window container
-    Window { title: Option<String> },
+    Window {
+        title: Option<String>,
+    },
     /// A text label
     Text {
         content: String,
@@ -43,6 +45,7 @@ pub enum NodeKind {
         spacing: f64,
         alignment: HorizontalAlignment,
     },
+    Spacer,
     /// A generic container view
     View,
 }
@@ -96,6 +99,16 @@ impl ShadowDescriptor {
                     width: taffy::LengthPercentage::length(0.0),
                     height: taffy::LengthPercentage::length(spacing as _),
                 },
+                ..Default::default()
+            },
+        }
+    }
+
+    pub fn spacer() -> Self {
+        Self {
+            kind: NodeKind::Spacer,
+            style: Style {
+                flex_grow: 1.0,
                 ..Default::default()
             },
         }

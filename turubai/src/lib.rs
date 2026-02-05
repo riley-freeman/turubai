@@ -6,6 +6,9 @@ pub mod pal;
 pub mod runtime;
 pub mod shadow;
 
+mod units;
+pub use units::Unit;
+
 #[cfg(test)]
 mod tests;
 
@@ -22,24 +25,4 @@ pub enum Backend {
 
 pub trait Application: Send + Sync {
     fn markup(&self) -> Box<dyn Element>;
-}
-
-pub enum Unit {
-    Pixels(f64),
-    Em(f64),
-    Percent(f64),
-}
-
-impl Unit {
-    pub fn px(x: f64) -> Self {
-        Self::Pixels(x)
-    }
-
-    pub fn em(x: f64) -> Self {
-        Self::Em(x)
-    }
-
-    pub fn percent(x: f64) -> Self {
-        Self::Percent(x)
-    }
 }
