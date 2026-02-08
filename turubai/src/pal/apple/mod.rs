@@ -230,7 +230,7 @@ impl DynContext for Context {
         let bundle_id = unsafe {
             let bundle = CFBundleGetMainBundle();
             if bundle.is_null() {
-                "com.itsjustbox.turubai.unnamed_app"
+                turubai_app.id()
             } else {
                 let os_bundle_id = CFBundleGetIdentifier(bundle);
                 if !os_bundle_id.is_null() {
@@ -238,7 +238,7 @@ impl DynContext for Context {
                     let slice = &*slice_from_raw_parts(os_bundle_id as *const u8, len);
                     str::from_utf8_unchecked(slice)
                 } else {
-                    "com.itsjustbox.turubai.unnamed_app"
+                    turubai_app.id()
                 }
             }
         };

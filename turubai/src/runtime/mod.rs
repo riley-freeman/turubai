@@ -12,7 +12,7 @@ pub struct WindowTemplate {
 
 struct WindowTemplateInner {
     id: String,
-    title: Option<String>,
+    title: String,
     modifiers: Modifiers,
     child: Option<Box<dyn Element>>,
 }
@@ -62,12 +62,12 @@ impl WindowTemplate {
         self.inner.as_ref() as *const _ as usize
     }
 
-    pub fn title(&self) -> Option<String> {
+    pub fn title(&self) -> String {
         self.inner.lock().unwrap().title.clone()
     }
 
     pub fn set_title(&self, title: impl Into<String>) {
-        self.inner.lock().unwrap().title = Some(title.into());
+        self.inner.lock().unwrap().title = title.into();
     }
 }
 

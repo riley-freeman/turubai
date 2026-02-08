@@ -10,6 +10,10 @@ use turubai_macros::turubai;
 struct MyApplication {}
 
 impl Application for MyApplication {
+    fn id(&self) -> &'static str {
+        "org.example.spacers"
+    }
+
     fn markup(&self) -> Box<dyn Element> {
         turubai!(
             WindowTemplate(title: "Spacers (Example)") {

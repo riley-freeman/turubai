@@ -20,10 +20,10 @@ pub enum Backend {
     WinUI = 0,
     Apple = 1,
     Android = 2,
-    Wayland = 3,
-    X11 = 4,
+    GTK = 3,
 }
 
 pub trait Application: Send + Sync {
+    fn id(&self) -> &'static str;
     fn markup(&self) -> Box<dyn Element>;
 }

@@ -26,7 +26,7 @@ pub struct ShadowNode {
 pub enum NodeKind {
     /// A window container
     Window {
-        title: Option<String>,
+        title: String,
     },
     /// A text label
     Text {
@@ -130,7 +130,7 @@ impl ShadowDescriptor {
         }
     }
 
-    pub fn window(title: Option<String>) -> Self {
+    pub fn window(title: String) -> Self {
         Self {
             kind: NodeKind::Window { title },
             style: Style {

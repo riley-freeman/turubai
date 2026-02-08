@@ -1,6 +1,9 @@
 #[cfg(feature = "apple")]
 mod apple;
 
+#[cfg(feature = "gtk")]
+mod gtk;
+
 use crate::{Application, Backend};
 
 pub fn takeover(app: Box<dyn Application>) -> ! {
@@ -8,9 +11,13 @@ pub fn takeover(app: Box<dyn Application>) -> ! {
     {
         apple::Context::takeover(app)
     }
+    #[cfg(feature = "gtk")]
+    {
+        gtk::Context::takeover(app)
+    }
 
-    #[cfg(not(feature = "apple"))]
-    panic!("No platform backend enabled. Enable the 'apple' feature on macOS.")
+    #[cfg(all(not(feature = "apple"), not(feature = "gtk")))]
+    panic!("No platform backend enabled. please enable one of the features: apple, gtk");
 }
 
 pub trait API {

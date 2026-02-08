@@ -12,6 +12,10 @@ use turubai_macros::turubai;
 struct MyApplication {}
 
 impl Application for MyApplication {
+    fn id(&self) -> &'static str {
+        "org.example.hello_world"
+    }
+
     fn markup(&self) -> Box<dyn Element> {
         let courier_font = Font::new("Courier New", 12, turubai::font::FontWeight::Regular, false);
         let arial_font = Font::new("Inter", 16, turubai::font::FontWeight::Black, true);
