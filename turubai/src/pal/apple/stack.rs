@@ -1,4 +1,6 @@
+use cacao::color::Color;
 use cacao::layout::Layout;
+use cacao::text::Label;
 use cacao::view::View;
 
 use crate::pal::apple::{Context, NativeView};
@@ -15,22 +17,32 @@ pub fn h_stack_request_dimensions(
 ) -> (Box<dyn Unit>, Box<dyn Unit>) {
     let mut width = 0.0_f64;
     let mut max_height = 0.0_f64;
+    let mut remaining_width = available_width;
+    let mut spacer_count = 0_usize;
 
+    // First pass: measure non-spacer children
     for child in &node.children {
+        if let NodeKind::Spacer = child.kind {
+            spacer_count += 1;
+            continue;
+        }
+
         let (child_width, child_height) = crate::pal::apple::measure::request_dimensions(
             child,
             context.clone(),
-            available_width,
+            remaining_width,
             available_height,
         );
 
-        let cw = child_width.to_pixels(Some(available_width));
+        let cw = child_width.to_pixels(Some(remaining_width));
         let ch = child_height.to_pixels(Some(available_height));
 
         if ch > max_height {
             max_height = ch;
         }
+
         width += cw;
+        remaining_width -= cw + spacing;
     }
 
     // Add spacing between children
@@ -38,7 +50,18 @@ pub fn h_stack_request_dimensions(
         width += spacing * (node.children.len() - 1) as f64;
     }
 
-    (Box::new(Pixels::new(width)), Box::new(Pixels::new(max_height)))
+    // If there are spacers, the stack takes full available width (percentage-based)
+    if spacer_count > 0 {
+        return (
+            Box::new(Percent::new(1.0)),
+            Box::new(Pixels::new(max_height)),
+        );
+    }
+
+    (
+        Box::new(Pixels::new(width)),
+        Box::new(Pixels::new(max_height)),
+    )
 }
 
 pub fn render_h_stack(node: &ShadowNode, tree: &ShadowTree, context: Context) -> NativeView {
@@ -112,7 +135,10 @@ pub fn v_stack_request_dimensions(
         );
     }
 
-    (Box::new(Pixels::new(max_width)), Box::new(Pixels::new(height)))
+    (
+        Box::new(Pixels::new(max_width)),
+        Box::new(Pixels::new(height)),
+    )
 }
 
 /// Calculate minimum dimensions (spacers treated as 0 size)

@@ -24,7 +24,9 @@ use crate::color::Color;
 use crate::font::Font;
 use crate::pal::apple::color::NativeColor;
 use crate::pal::apple::font::NativeFont;
-use crate::pal::apple::measure::{request_dimensions, request_minimum_dimensions, update_node_sizes};
+use crate::pal::apple::measure::{
+    request_dimensions, request_minimum_dimensions, update_node_sizes,
+};
 use crate::pal::apple::stack::{render_h_stack, render_spacer, render_v_stack};
 use crate::pal::apple::text::render_text;
 use crate::pal::{apple, DynContext};
@@ -72,7 +74,7 @@ impl Context {
 
     /// Recursively render a shadow node to native views
     /// Returns (NativeView, estimated_width, estimated_height)
-    pub fn render_node(node: &ShadowNode, tree: &ShadowTree, context: Context) -> NativeView {
+    fn render_node(node: &ShadowNode, tree: &ShadowTree, context: Context) -> NativeView {
         let layout = tree.get_layout(node.taffy_id).unwrap();
         let x = layout.location.x as f64;
         let y = layout.location.y as f64;
@@ -90,6 +92,25 @@ impl Context {
             NodeKind::HStack { .. } => render_h_stack(node, tree, context.clone()),
             NodeKind::VStack { .. } => render_v_stack(node, tree, context.clone()),
             NodeKind::Spacer { .. } => render_spacer(),
+
+            NodeKind::BackgroundColor { color } => {
+                let child_node = node
+                    .children
+                    .first()
+                    .expect("BackgroundColor must have a child");
+                let child_view = Context::render_node(child_node, tree, context.clone());
+
+                let view = View::new();
+                let native_color = context.get_native_color(color);
+                view.set_background_color(native_color.os_color());
+                view.set_translates_autoresizing_mask_into_constraints(true);
+                view.add_subview(child_view.view());
+
+                NativeView::Container {
+                    view,
+                    _children: vec![child_view],
+                }
+            }
 
             _ => {
                 unimplemented!()
@@ -243,8 +264,8 @@ enum NativeView {
         wrapper: View,
         _label: Label,
         _font: Arc<NativeFont>,
-        underline_color: Option<Arc<NativeColor>>,
-        strike_through_color: Option<Arc<NativeColor>>,
+        _underline_color: Option<Arc<NativeColor>>,
+        _strike_through_color: Option<Arc<NativeColor>>,
     },
 }
 
@@ -288,7 +309,6 @@ pub struct TurubaiWindowDelegate {
     content: View,
     window: Option<Window>,
 
-    new_dimentions: Mutex<CGSize>,
     shadow_tree: Mutex<ShadowTree>,
     root_node: ShadowNode,
 
@@ -374,11 +394,8 @@ impl TurubaiWindowDelegate {
         let available_height = height_unit.to_pixels(Some(DEFAULT_WINDOW_HEIGHT));
 
         // Calculate minimum content size (spacers treated as 0)
-        let (min_width, min_height) = request_minimum_dimensions(
-            &root,
-            context.clone(),
-            DEFAULT_WINDOW_WIDTH,
-        );
+        let (min_width, min_height) =
+            request_minimum_dimensions(&root, context.clone(), DEFAULT_WINDOW_WIDTH);
         eprintln!(
             "[DEBUG] Computed content size: {}x{}, minimum: {}x{}",
             available_width, available_height, min_width, min_height
@@ -409,7 +426,6 @@ impl TurubaiWindowDelegate {
             content,
             window: None,
 
-            new_dimentions: Mutex::new(CGSize::new(DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT)),
             shadow_tree: Mutex::new(tree),
             root_node: root,
 
@@ -463,18 +479,14 @@ impl WindowDelegate for TurubaiWindowDelegate {
         self.window = Some(window);
     }
 
-    fn will_resize(&self, new_width: f64, new_height: f64) -> (f64, f64) {
-        *self.new_dimentions.lock().unwrap() = CGSize::new(new_width, new_height);
-        (new_width, new_height)
-    }
-
     fn did_resize(&self) {
         let mut shadow_tree = self.shadow_tree.lock().unwrap();
 
         // Get actual content view bounds (excludes title bar)
-        let content_frame: CGRect = self.content.objc.get(|view| unsafe {
-            msg_send![view, bounds]
-        });
+        let content_frame: CGRect = self
+            .content
+            .objc
+            .get(|view| unsafe { msg_send![view, bounds] });
         let layout_width = content_frame.size.width;
         let layout_height = content_frame.size.height;
 

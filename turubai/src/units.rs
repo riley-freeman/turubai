@@ -13,10 +13,6 @@ impl dyn Unit {
     }
 }
 
-pub trait Measurable {
-    fn request_dimensions(&self) -> Box<dyn Unit>;
-}
-
 #[derive(Debug, Clone, Copy)]
 pub struct Pixels(f64);
 

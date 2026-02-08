@@ -1,11 +1,11 @@
-mod node;
 mod conv;
+mod node;
 
 pub use node::*;
 
 use std::cell::RefCell;
 use std::collections::HashMap;
-use taffy::{Dimension, Layout, LengthPercentage, NodeId, Size, TaffyTree};
+use taffy::{AvailableSpace, Dimension, Layout, LengthPercentage, NodeId, Size, Style, TaffyTree};
 
 /// The shadow tree holds the platform-agnostic representation of the UI.
 /// It owns the layout tree (Taffy) and maps layout nodes to shadow nodes.
@@ -47,7 +47,9 @@ impl ShadowTree {
 
         // Create Taffy node for layout
         let child_taffy_ids: Vec<NodeId> = children.iter().map(|c| c.taffy_id).collect();
-        let taffy_id = self.taffy.borrow_mut()
+        let taffy_id = self
+            .taffy
+            .borrow_mut()
             .new_with_children(descriptor.style.clone(), &child_taffy_ids)
             .expect("Failed to create taffy node");
 
@@ -60,13 +62,19 @@ impl ShadowTree {
     }
 
     /// Compute layout for the entire tree
-    pub fn compute_layout(&mut self, root: &ShadowNode, available_width: f32, available_height: f32) {
+    pub fn compute_layout(
+        &mut self,
+        root: &ShadowNode,
+        available_width: f32,
+        available_height: f32,
+    ) {
         let available = taffy::Size {
             width: taffy::AvailableSpace::Definite(available_width),
             height: taffy::AvailableSpace::Definite(available_height),
         };
 
-        self.taffy.borrow_mut()
+        self.taffy
+            .borrow_mut()
             .compute_layout(root.taffy_id, available)
             .expect("Failed to compute layout");
 
@@ -88,8 +96,8 @@ impl ShadowTree {
             let tree = self.taffy.borrow_mut();
             tree.style(id).unwrap().clone()
         };
-        style.size = Size { width,  height };
-        self.taffy.borrow_mut().set_style(id, style);
+        style.size = Size { width, height };
+        let _ = self.taffy.borrow_mut().set_style(id, style);
     }
 
     /// Get the computed layout for a node
@@ -107,4 +115,99 @@ impl Default for ShadowTree {
     fn default() -> Self {
         Self::new()
     }
+}
+
+#[test]
+fn test_centering() {
+    let mut tree = taffy::TaffyTree::<()>::new();
+
+    let child = tree.new_with_children(Style::default(), &[]).unwrap();
+    let h_stack = tree
+        .new_with_children(
+            Style {
+                justify_content: Some(taffy::JustifyContent::Center),
+                ..Default::default()
+            },
+            &[child],
+        )
+        .unwrap();
+
+    let v_stack = tree
+        .new_with_children(
+            Style {
+                justify_content: Some(taffy::JustifyContent::Center),
+                ..Default::default()
+            },
+            &[h_stack],
+        )
+        .unwrap();
+
+    tree.compute_layout(
+        v_stack,
+        Size {
+            width: AvailableSpace::Definite(800.0),
+            height: AvailableSpace::Definite(600.0),
+        },
+    )
+    .unwrap();
+
+    let v = tree.layout(v_stack).unwrap();
+    assert_eq!(v.size.width, 800.0);
+    assert_eq!(v.size.height, 600.0);
+}
+
+#[test]
+fn test_background_layout() {
+    use crate::color::Color;
+    use crate::elements::Element;
+    use crate::shadow::ShadowDescriptor;
+
+    // Define a simple mock element
+    struct MockElement;
+    impl Element for MockElement {
+        fn name(&self) -> &'static str {
+            "mock"
+        }
+        fn display_name(&self) -> &'static str {
+            "Mock"
+        }
+        fn shadow_descriptor(&self) -> ShadowDescriptor {
+            ShadowDescriptor::view()
+        }
+    }
+
+    let child = Box::new(MockElement);
+    let bg = crate::postprocessing::BackgroundColor::new(&Color::SystemRed, child);
+
+    let tree = ShadowTree::new();
+    let root_node = tree.create_node_from_element(&bg);
+
+    // Verify it is a BackgroundColor node
+    if let NodeKind::BackgroundColor { color } = &root_node.kind {
+        // Verify the color is correct
+        assert!(matches!(color, Color::SystemRed));
+    } else {
+        panic!("Root node is not BackgroundColor");
+    }
+
+    // Verify BackgroundColor has exactly one child
+    assert_eq!(
+        root_node.children.len(),
+        1,
+        "BackgroundColor should have 1 child"
+    );
+
+    // Verify the style uses Column flex direction for proper child layout
+    let taffy = tree.taffy.borrow();
+    let style = taffy.style(root_node.taffy_id).unwrap();
+    assert_eq!(
+        style.flex_direction,
+        taffy::FlexDirection::Column,
+        "BackgroundColor should use Column flex direction"
+    );
+    assert_eq!(
+        style.align_items,
+        Some(taffy::AlignItems::Stretch),
+        "BackgroundColor should stretch children horizontally"
+    );
 }

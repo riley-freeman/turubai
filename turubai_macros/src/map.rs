@@ -19,7 +19,7 @@ impl ElementEntry {
     }
 }
 
-pub static ELEMENTS: LazyLock<HashMap<&str, ElementEntry>> = LazyLock::new(|| {
+pub static POSTPROCESSING_ELEMENTS: LazyLock<HashMap<String, ElementEntry>> = LazyLock::new(|| {
     let namespace = if env!("CARGO_CRATE_NAME").eq(NAMESPACE) {
         "crate"
     } else {
@@ -27,25 +27,13 @@ pub static ELEMENTS: LazyLock<HashMap<&str, ElementEntry>> = LazyLock::new(|| {
     };
 
     // Visuals
-    let text = ElementEntry {
-        path_str: format!("{namespace}::elements::Text"),
-        modifier_memeber: String::from("text"),
-    };
-
-    // Composition
-    let v_stack = ElementEntry {
-        path_str: format!("{namespace}::composition::VStack"),
-        modifier_memeber: String::from("stack"),
-    };
-    let h_stack = ElementEntry {
-        path_str: format!("{namespace}::composition::HStack"),
-        modifier_memeber: String::from("stack"),
+    let background_color = ElementEntry {
+        path_str: format!("turubai::postprocessing::BackgroundColor"),
+        modifier_memeber: String::from("background_color"),
     };
 
     HashMap::from([
-        ("Text", text),
-        ("VStack", v_stack),
-        ("HStack", h_stack),
+        ("background_color".to_string(), background_color),
     ])
 });
 

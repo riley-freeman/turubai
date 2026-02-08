@@ -1,12 +1,18 @@
-use std::{collections, mem::uninitialized};
+use proc_macro2::Span;
+use syn::{
+    braced, parenthesized,
+    parse::{Parse, ParseStream},
+    punctuated::Punctuated,
+    token::{Brace, Paren},
+    Expr, Ident, Token,
+};
 
-use syn::{Expr, Ident, LitInt, PathSegment, Token, braced, parenthesized, parse::{Parse, ParseStream}, punctuated::Punctuated, token::{Brace, Paren}};
-
-use quote::ToTokens;
 use quote::quote;
+use quote::ToTokens;
 
-use crate::map::{ELEMENTS};
+use crate::map::POSTPROCESSING_ELEMENTS;
 
+#[derive(Clone)]
 pub struct ExprElement {
     tag: syn::Path,
     _paren_token: Option<Paren>,
@@ -38,8 +44,7 @@ impl ExprElement {
         let mut children_names = Punctuated::<Ident, Token![,]>::new();
         for (i, child) in self.children.iter().enumerate() {
             let render = child.to_token_stream();
-            let brace_token = self.brace_token.expect("Failed to find any brace tokens!");
-            let child_name = Ident::new(&format!("ch_{i}"), brace_token.span.open().clone());
+            let child_name = Ident::new(&format!("ch_{i}"), Span::call_site());
             children.push(quote! {let #child_name = Box::new(#render);});
             children_names.push(child_name);
         }
@@ -51,7 +56,10 @@ impl ExprElement {
             move |modifiers| {#(#children)*}
         };
 
-        let method_name = Ident::new(&format!("new_{}", self.required_args.len()), path.segments.last().unwrap().ident.span());
+        let method_name = Ident::new(
+            &format!("new_{}", self.required_args.len()),
+            path.segments.last().unwrap().ident.span(),
+        );
         let result = if required_args.is_empty() {
             quote! { #path::#method_name(#optional_args, #wrapped_children_function) }
         } else {
@@ -98,10 +106,10 @@ impl ExprElement {
                 token
             };
 
-            set_tokens.push(quote!{fm_lock.#member.#field_name = #val;});
+            set_tokens.push(quote! {fm_lock.#member.#field_name = #val;});
         }
 
-        quote!{
+        quote! {
             {
                 let mut fm = modifiers.fork();
                 let mut fm_lock = fm.lock().unwrap();
@@ -113,7 +121,12 @@ impl ExprElement {
     }
 }
 
-fn parse_attributes(input: ParseStream) -> syn::Result<(Punctuated<Expr, Token![,]>, Punctuated<OptionalAttrExpr, Token![,]>)> {
+fn parse_attributes(
+    input: ParseStream,
+) -> syn::Result<(
+    Punctuated<Expr, Token![,]>,
+    Punctuated<OptionalAttrExpr, Token![,]>,
+)> {
     let mut required_args = Punctuated::<Expr, Token![,]>::new();
     let mut optional_args = Punctuated::<OptionalAttrExpr, Token![,]>::new();
     let mut seen_optional = false;
@@ -164,14 +177,18 @@ impl Parse for ExprElement {
             optional_args = opt;
         }
 
-        let mut children = Punctuated::<ExprElement, Token![,]>::new();
+        let mut children = Punctuated::<ExprPostProcessStack, Token![,]>::new();
         let mut brace_token = None;
         let lookahead = input.lookahead1();
         if lookahead.peek(Brace) {
             let content;
             brace_token = Some(braced!(content in input));
-            children = content.parse_terminated(ExprElement::parse, Token![,])?;
+            children = content.parse_terminated(ExprPostProcessStack::parse, Token![,])?;
         }
+        let children = children
+            .iter()
+            .map(|post| post.into_expr_element())
+            .collect();
 
         Ok(Self {
             tag,
@@ -184,7 +201,87 @@ impl Parse for ExprElement {
     }
 }
 
+/// A simple method call: `method_name(args)`
+/// This is simpler than syn::ExprCall and doesn't try to parse method chains.
+#[derive(Clone)]
+pub struct SimpleMethodCall {
+    pub name: Ident,
+    pub paren_token: Paren,
+    pub args: Punctuated<Expr, Token![,]>,
+}
 
+impl Parse for SimpleMethodCall {
+    fn parse(input: ParseStream) -> syn::Result<Self> {
+        let name = input.parse::<Ident>()?;
+        let content;
+        let paren_token = parenthesized!(content in input);
+        let args = content.parse_terminated(Expr::parse, Token![,])?;
+        Ok(Self {
+            name,
+            paren_token,
+            args,
+        })
+    }
+}
+
+pub struct ExprPostProcessStack {
+    element: ExprElement,
+    period_token: Option<Token![.]>,
+    stack: Punctuated<SimpleMethodCall, Token![.]>,
+}
+
+impl ExprPostProcessStack {
+    pub fn into_expr_element(&self) -> ExprElement {
+        let mut prev: Option<ExprElement> = None;
+        for call in self.stack.iter().rev() {
+            let mut children = Punctuated::new();
+            children.push(prev.unwrap_or(self.element.clone()));
+
+            let call_str = call.name.to_string();
+            let error_message = format!("{} is not a post processing function", call_str);
+            let effect = POSTPROCESSING_ELEMENTS
+                .get(&call_str)
+                .expect(&error_message);
+
+            prev = Some(ExprElement {
+                tag: effect.path(),
+                _paren_token: Some(call.paren_token),
+                required_args: call.args.clone(),
+                optional_args: Punctuated::new(),
+                brace_token: None,
+                children,
+            });
+        }
+
+        prev.unwrap_or(self.element.clone())
+    }
+}
+
+impl Parse for ExprPostProcessStack {
+    fn parse(input: ParseStream) -> syn::Result<Self> {
+        let element = input.parse::<ExprElement>()?;
+
+        let lookahead = input.lookahead1();
+        if lookahead.peek(Token![.]) {
+            let period_token = Some(input.parse::<Token![.]>()?);
+            let parser = Punctuated::<SimpleMethodCall, Token![.]>::parse_separated_nonempty;
+            let stack = parser(input)?;
+            Ok(ExprPostProcessStack {
+                element,
+                stack,
+                period_token,
+            })
+        } else {
+            Ok(ExprPostProcessStack {
+                element,
+                stack: Punctuated::new(),
+                period_token: None,
+            })
+        }
+    }
+}
+
+#[derive(Clone)]
 pub struct OptionalAttrExpr {
     pub namespace: Option<Ident>,
     pub name: Ident,
@@ -202,11 +299,21 @@ impl Parse for OptionalAttrExpr {
             let name = input.parse::<Ident>()?;
             let div = input.parse::<Token![:]>()?;
             let value = input.parse::<Expr>()?;
-            Ok(Self { namespace: Some(namespace), name, _div: div, value })
+            Ok(Self {
+                namespace: Some(namespace),
+                name,
+                _div: div,
+                value,
+            })
         } else if look.peek(Token![:]) {
             let div = input.parse::<Token![:]>()?;
             let value = input.parse::<Expr>()?;
-            Ok(Self { namespace: None, name: namespace, _div: div, value })
+            Ok(Self {
+                namespace: None,
+                name: namespace,
+                _div: div,
+                value,
+            })
         } else {
             Err(look.error())
         }

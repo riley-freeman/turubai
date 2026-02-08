@@ -1,6 +1,6 @@
 use std::hash::Hash;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Color {
     Text,
     SystemRed,

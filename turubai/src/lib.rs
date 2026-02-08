@@ -3,6 +3,7 @@ pub mod composition;
 pub mod elements;
 pub mod font;
 pub mod pal;
+pub mod postprocessing;
 pub mod runtime;
 pub mod shadow;
 

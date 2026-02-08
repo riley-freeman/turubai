@@ -1,7 +1,7 @@
 use taffy::AlignItems;
 
-use crate::composition::VerticalAlignment;
 use crate::composition::HorizontalAlignment;
+use crate::composition::VerticalAlignment;
 
 pub fn conv_v_alignment(a: VerticalAlignment) -> AlignItems {
     match a {

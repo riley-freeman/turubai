@@ -1,11 +1,11 @@
-use taffy::{AlignItems, FlexDirection, JustifyContent, NodeId, Style};
+use taffy::{FlexDirection, NodeId, Style};
 
 use crate::{
     color::Color,
     composition::{HorizontalAlignment, VerticalAlignment},
     elements::TextDecoration,
-    font::{Font, FontWeight},
-    shadow::conv::{self, conv_h_alignment, conv_v_alignment},
+    font::Font,
+    shadow::conv::{conv_h_alignment, conv_v_alignment},
 };
 
 /// A node in the shadow tree - platform agnostic description of a UI element
@@ -46,6 +46,9 @@ pub enum NodeKind {
         alignment: HorizontalAlignment,
     },
     Spacer,
+    BackgroundColor {
+        color: Color,
+    },
     /// A generic container view
     View,
 }
@@ -109,6 +112,19 @@ impl ShadowDescriptor {
             kind: NodeKind::Spacer,
             style: Style {
                 flex_grow: 1.0,
+                ..Default::default()
+            },
+        }
+    }
+
+    pub fn background_color(color: Color) -> Self {
+        Self {
+            kind: NodeKind::BackgroundColor { color },
+            style: Style {
+                // Make the child fill the background color container
+                flex_direction: FlexDirection::Column,
+                // Stretch child horizontally (cross axis)
+                align_items: Some(taffy::AlignItems::Stretch),
                 ..Default::default()
             },
         }

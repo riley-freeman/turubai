@@ -1,6 +1,6 @@
 use turubai::{
     color::Color,
-    composition::{HStack, HorizontalAlignment, Spacer, VStack},
+    composition::{HStack, HorizontalAlignment, Spacer, VStack, VerticalAlignment},
     elements::{Element, Text, TextDecoration, TextDecorationLine, TextLineStyle},
     font::Font,
     runtime::WindowTemplate,
@@ -24,38 +24,38 @@ impl Application for MyApplication {
             ..Default::default()
         };
 
-        Box::new(turubai!(
-            WindowTemplate(title: Some("Crayon Turubai!".to_string())) {
+        let white = Color::new(255, 255, 255);
+
+        turubai!(
+            WindowTemplate(title: "Hello, World!") {
                 VStack(spacing: 0.0, alignment: HorizontalAlignment::Center) {
                     // Text("Hello, World!", font: courier_font.clone()),
                     // Dummy text to push the content down
                     Text(" ", font: courier_font.clone()),
                     Spacer(),
-                    VStack(spacing: 2.0) {
-                        HStack(spacing: 8.0, text::font: arial_font.clone()) {
-                            Text("CRAYON"),
-                            HStack(spacing: 0.0, text::decoration: thick_decoration.clone()) {
-                                Text("T", color: Color::SystemRed),
-                                Text("U", color: Color::SystemOrange),
-                                Text("R", color: Color::SystemYellow),
-                                Text("U", color: Color::SystemGreen),
-                                Text("B", color: Color::SystemBlue),
-                                Text("A", color: Color::SystemIndigo),
-                                Text("I", color: Color::SystemPurple),
-                            },
+                    HStack(spacing: 0.0, text::font: arial_font.clone(), alignment: VerticalAlignment::Center) {
+                        Spacer(),
+                        Text("CRAYON ", color: white.clone()),
+                        HStack(spacing: 0.0, text::decoration: thick_decoration.clone()) {
+                            Text("T", color: Color::SystemRed),
+                            Text("U", color: Color::SystemOrange),
+                            Text("R", color: Color::SystemYellow),
+                            Text("U", color: Color::SystemGreen),
+                            Text("B", color: Color::SystemBlue),
+                            Text("A", color: Color::SystemIndigo),
+                            Text("I", color: Color::SystemPurple),
                         },
-                        // HStack() {
-                        //     Text("Now supports "),
-                        //     Text("colors", decoration: strike_though),
-                        //     Text(" lines!", decoration: underline),
-                        // }
+                        Spacer(),
                     },
                     Spacer(),
-                    Text("We support Spacers!", font: courier_font.clone()),
-                    Text("(C) 2026 Sadiki Industries!", font: courier_font.clone()),
+                    Text("We support background colors & postprocessing layers!", font: courier_font.clone(), color: white.clone()),
+                    Text("2026 Ngishu, Mark Sadiki", font: courier_font.clone(), color: white.clone()),
+                    // Dummt text for spacing
+                    Text("", font: courier_font.clone(), color: white.clone()),
                 }
+                .background_color(Color::new(0, 0, 0))
             },
-        ))
+        )
     }
 }
 

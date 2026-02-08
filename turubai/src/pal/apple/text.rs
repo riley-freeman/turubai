@@ -35,6 +35,7 @@ pub fn request_dimensions(
         let label = Label::new();
         label.set_text(content);
         label.set_font(font.os_font());
+        label.set_background_color(cacao::color::Color::SystemBlue);
 
         let (width, height) = label.objc.get(|handle| unsafe {
             let size: CGSize = msg_send![handle, intrinsicContentSize];
@@ -115,8 +116,8 @@ pub fn render_text(
         wrapper,
         _font: native_font,
         _label: label,
-        underline_color,
-        strike_through_color,
+        _underline_color: underline_color,
+        _strike_through_color: strike_through_color,
     }
 }
 

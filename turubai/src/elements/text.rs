@@ -30,7 +30,7 @@ impl Text {
     pub fn new_1(
         contents: &str,
         modifiers: Modifiers,
-        children: fn(Modifiers) -> Vec<Box<dyn Element>>,
+        children: impl FnOnce(Modifiers) -> Vec<Box<dyn Element>>,
     ) -> Self {
         let inner = TextInner {
             contents: String::from(contents),

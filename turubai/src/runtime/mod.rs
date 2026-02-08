@@ -2,12 +2,12 @@ use std::collections::VecDeque;
 use std::sync::Arc;
 use std::sync::Mutex;
 
-use crate::Application;
 use crate::elements::{Element, Modifiers};
 use crate::shadow::ShadowDescriptor;
+use crate::Application;
 
 pub struct WindowTemplate {
-    inner: Arc<Mutex<WindowTemplateInner>>
+    inner: Arc<Mutex<WindowTemplateInner>>,
 }
 
 struct WindowTemplateInner {
@@ -18,17 +18,28 @@ struct WindowTemplateInner {
 }
 
 impl WindowTemplate {
-    pub fn new_0(modifiers: Modifiers, children: impl FnOnce(Modifiers) -> Vec<Box<dyn Element>>) -> Self {
+    pub fn new_0(
+        modifiers: Modifiers,
+        children: impl FnOnce(Modifiers) -> Vec<Box<dyn Element>>,
+    ) -> Self {
         Self::new_1_impl("default", modifiers, children)
     }
 
-    pub fn new_1(id: &str, modifiers: Modifiers, children: impl FnOnce(Modifiers) -> Vec<Box<dyn Element>>) -> Self {
+    pub fn new_1(
+        id: &str,
+        modifiers: Modifiers,
+        children: impl FnOnce(Modifiers) -> Vec<Box<dyn Element>>,
+    ) -> Self {
         Self::new_1_impl(id, modifiers, children)
     }
 
-    fn new_1_impl(id: &str, modifiers: Modifiers, children: impl FnOnce(Modifiers) -> Vec<Box<dyn Element>>) -> Self {
+    fn new_1_impl(
+        id: &str,
+        modifiers: Modifiers,
+        children: impl FnOnce(Modifiers) -> Vec<Box<dyn Element>>,
+    ) -> Self {
         let mods = modifiers.lock().unwrap();
-        let title = mods.window_template.title.clone();
+        let title = Some(mods.window_template.title.to_string());
         std::mem::drop(mods);
 
         let children = children(modifiers.clone());
@@ -88,7 +99,7 @@ impl Element for WindowTemplate {
 
 #[derive(Default, Clone, PartialEq)]
 pub struct WindowModifiers {
-    pub title: Option<String>,
+    pub title: &'static str,
 }
 
 pub fn turubai_main(app: Box<dyn Application>) -> ! {
