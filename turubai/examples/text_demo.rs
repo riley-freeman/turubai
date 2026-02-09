@@ -50,8 +50,8 @@ impl Application for TextDemoApp {
             ..Default::default()
         };
 
-        Box::new(turubai!(
-            WindowTemplate(title: "GTK Text Demo".to_string()) {
+        turubai!(
+            WindowTemplate(title: "GTK Text Demo") {
                 VStack(spacing: 10.0, alignment: HorizontalAlignment::Center) {
                     Text("Standard Text", font: base_font.clone()),
 
@@ -77,7 +77,7 @@ impl Application for TextDemoApp {
                     }
                 }
             },
-        ))
+        )
     }
 }
 

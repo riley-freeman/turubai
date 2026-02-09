@@ -57,7 +57,7 @@ impl Application for MyApplication {
                     // Dummt text for spacing
                     Text("", font: courier_font.clone(), color: white.clone()),
                 }
-                // .background_color(Color::new(0, 0, 0))
+                .background_color(Color::new(0, 0, 0))
             },
         )
     }

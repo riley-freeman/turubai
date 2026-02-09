@@ -4,7 +4,7 @@ use std::rc::Rc;
 use gtk4::{
     gio::prelude::{ApplicationExt, ApplicationExtManual},
     prelude::*,
-    Fixed,
+    Fixed, Widget,
 };
 
 use crate::{
@@ -70,10 +70,11 @@ impl NativeWidget {
                 for (child_widget, child_node) in children.iter().zip(node.children.iter()) {
                     // Reposition child within the Fixed container
                     if let Some(child_layout) = tree.get_layout(child_node.taffy_id) {
-                        let transform = gtk4::gsk::Transform::new().translate(&gtk4::graphene::Point::new(
-                            child_layout.location.x,
-                            child_layout.location.y,
-                        ));
+                        let transform =
+                            gtk4::gsk::Transform::new().translate(&gtk4::graphene::Point::new(
+                                child_layout.location.x,
+                                child_layout.location.y,
+                            ));
                         container.set_child_transform(&child_widget.widget(), Some(&transform));
                     }
 
@@ -125,12 +126,8 @@ impl Context {
                     let (child_w, child_h) =
                         self.update_layout(child, tree, available_width, available_height);
 
-                    if child_w {
-                        needs_full_width = true;
-                    }
-                    if child_h {
-                        needs_full_height = true;
-                    }
+                    needs_full_width = child_w || needs_full_width;
+                    needs_full_height = child_h || needs_full_height;
                 }
                 let width_dim = if needs_full_width {
                     taffy::Dimension::percent(1.0)
@@ -153,12 +150,8 @@ impl Context {
                     let (child_w, child_h) =
                         self.update_layout(child, tree, available_width, available_height);
 
-                    if child_w {
-                        needs_full_width = true;
-                    }
-                    if child_h {
-                        needs_full_height = true;
-                    }
+                    needs_full_width = child_w || needs_full_width;
+                    needs_full_height = child_h || needs_full_height;
                 }
 
                 let width_dim = if needs_full_width {
@@ -176,6 +169,32 @@ impl Context {
                 (needs_full_width, needs_full_height)
             }
 
+            NodeKind::BackgroundColor { .. } => {
+                let child = node
+                    .children
+                    .get(0)
+                    .expect("BackgroundColor must have a child");
+                let (needs_full_width, needs_full_height) =
+                    self.update_layout(child, tree, available_width, available_height);
+
+                let width_dim = if needs_full_width {
+                    taffy::Dimension::percent(1.0)
+                } else {
+                    taffy::Dimension::auto()
+                };
+                let height_dim = if needs_full_height {
+                    taffy::Dimension::percent(1.0)
+                } else {
+                    taffy::Dimension::auto()
+                };
+
+                if needs_full_width || needs_full_height {
+                    tree.set_size(node.taffy_id, width_dim, height_dim);
+                }
+
+                (needs_full_width, needs_full_height)
+            }
+
             _ => {
                 // Other containers: recurse into children
                 let mut needs_full_width = false;
@@ -184,12 +203,8 @@ impl Context {
                     let (child_w, child_h) =
                         self.update_layout(child, tree, available_width, available_height);
 
-                    if child_w {
-                        needs_full_width = true;
-                    }
-                    if child_h {
-                        needs_full_height = true;
-                    }
+                    needs_full_width = child_w || needs_full_width;
+                    needs_full_height = child_h || needs_full_height;
                 }
                 (needs_full_width, needs_full_height)
             }
@@ -229,6 +244,26 @@ impl Context {
             NodeKind::Spacer => NativeWidget::Spacer {
                 widget: gtk4::Box::new(gtk4::Orientation::Horizontal, 0),
             },
+
+            NodeKind::BackgroundColor { color } => {
+                let widget = gtk4::Fixed::new();
+
+                let child = node
+                    .children
+                    .first()
+                    .expect("BackgroundColor requires at least one element!");
+                let child_native = self.render_node(&child);
+                widget.put(&child_native.widget(), 0.0, 0.0);
+
+                let style = conv::conv_background_color(color);
+                widget.style_context().add_class(&style);
+
+                NativeWidget::Container {
+                    container: widget,
+                    children: vec![child_native],
+                }
+            }
+
             _ => NativeWidget::Text {
                 label: gtk4::Label::new(Some("Unsupported Node")),
             },

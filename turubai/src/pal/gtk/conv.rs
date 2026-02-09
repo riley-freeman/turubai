@@ -1,3 +1,9 @@
+use gtk4::{
+    gdk::Display,
+    prelude::{StyleContextExt, WidgetExt},
+    CssProvider,
+};
+
 use crate::color::Color;
 
 pub fn conv_weight(weight: crate::font::FontWeight) -> gtk4::pango::Weight {
@@ -52,11 +58,10 @@ pub fn create_pango_attr_list(
     // Font
     let mut font_desc = gtk4::pango::FontDescription::new();
     font_desc.set_family(&font.name());
+
     let size = font.size() * 1024.0; // Pango units are 1/1024
     font_desc.set_size(size as i32);
-
     font_desc.set_weight(conv_weight(font.weight()));
-
     if font.is_italic() {
         font_desc.set_style(gtk4::pango::Style::Italic);
     }
@@ -90,7 +95,6 @@ pub fn create_pango_attr_list(
 
     // Decoration - Underline
     let underline_style = conv_underline_style(&decoration.underline.style);
-
     if underline_style != gtk4::pango::Underline::None {
         let mut attr_u = gtk4::pango::AttrInt::new_underline(underline_style);
         attr_u.set_start_index(0);
@@ -127,4 +131,40 @@ pub fn create_pango_attr_list(
     }
 
     (attrs, font_desc)
+}
+
+pub fn conv_background_color(color: &Color) -> String {
+    let value = match color {
+        Color::Custom { r, g, b, a } => {
+            format!(
+                "rgba({}, {}, {}, {})",
+                r * 255.0,
+                g * 255.0,
+                b * 255.0,
+                a * 255.0
+            )
+        }
+        Color::SystemRed => "red".to_string(),
+        Color::SystemGreen => "green".to_string(),
+        Color::SystemBlue => "blue".to_string(),
+        Color::SystemYellow => "yellow".to_string(),
+        Color::SystemOrange => "orange".to_string(),
+        Color::SystemPurple => "purple".to_string(),
+        Color::SystemPink => "pink".to_string(),
+        Color::SystemIndigo => "indigo".to_string(),
+        Color::Text => "black".to_string(),
+    };
+
+    let class = randomizer::Randomizer::ALPHABETICAL(8).string().unwrap();
+    let css = format!(".{} {{ background-color: {} }}", class, value);
+
+    let provider = CssProvider::new();
+    provider.load_from_data(css.as_str());
+
+    gtk4::style_context_add_provider_for_display(
+        &Display::default().unwrap(),
+        &provider,
+        gtk4::STYLE_PROVIDER_PRIORITY_APPLICATION,
+    );
+    class
 }
