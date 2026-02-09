@@ -39,7 +39,7 @@ impl WindowTemplate {
         children: impl FnOnce(Modifiers) -> Vec<Box<dyn Element>>,
     ) -> Self {
         let mods = modifiers.lock().unwrap();
-        let title = Some(mods.window_template.title.to_string());
+        let title = mods.window_template.title.to_string();
         std::mem::drop(mods);
 
         let children = children(modifiers.clone());

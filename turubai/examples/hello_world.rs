@@ -52,12 +52,12 @@ impl Application for MyApplication {
                         Spacer(),
                     },
                     Spacer(),
-                    Text("We support background colors & postprocessing layers!", font: courier_font.clone(), color: white.clone()),
+                    Text("We support Linux and GTK4!", font: courier_font.clone(), color: white.clone()),
                     Text("2026 Ngishu, Mark Sadiki", font: courier_font.clone(), color: white.clone()),
                     // Dummt text for spacing
                     Text("", font: courier_font.clone(), color: white.clone()),
                 }
-                .background_color(Color::new(0, 0, 0))
+                // .background_color(Color::new(0, 0, 0))
             },
         )
     }

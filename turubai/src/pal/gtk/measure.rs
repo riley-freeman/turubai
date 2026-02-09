@@ -1,6 +1,11 @@
-use gtk4::prelude::NativeDialogExtManual;
+use gtk4::prelude::WidgetExt;
 
-use crate::units::{Percent, Pixels};
+use crate::{
+    pal::gtk::{conv, Context},
+    shadow::{NodeKind, ShadowNode},
+    units::{Percent, Pixels},
+    Unit,
+};
 
 pub fn request_dimensions(
     node: &ShadowNode,
@@ -16,29 +21,25 @@ pub fn request_dimensions(
             decoration,
         } => {
             let label = gtk4::Label::new(Some(content.as_str()));
-            let (attrs, _) = Self::create_pango_attr_list(font, color, decoration);
+            let (attrs, _) = conv::create_pango_attr_list(&font, &color, &decoration);
             label.set_attributes(Some(&attrs));
 
             let (_, natural_width, _, _) = label.measure(gtk4::Orientation::Horizontal, -1);
             let (_, natural_height, _, _) =
                 label.measure(gtk4::Orientation::Vertical, natural_width);
 
-            let width = Box::new(Pixels::new(natural_width));
-            let height = Box::new(Pixels::new(natural_height));
+            let width = Box::new(Pixels::new(natural_width as f64));
+            let height = Box::new(Pixels::new(natural_height as f64));
             (width, height)
         }
         NodeKind::Spacer => (Box::new(Percent::new(1.0)), Box::new(Percent::new(1.0))),
-        NodeKind::HStack => {
+        NodeKind::HStack { spacing, .. } => {
             let mut width = 0.0_f64;
             let mut max_height = 0.0_f64;
 
             for child in &node.children {
-                let (child_width, child_height) = crate::pal::apple::measure::request_dimensions(
-                    child,
-                    context.clone(),
-                    available_width,
-                    available_height,
-                );
+                let (child_width, child_height) =
+                    request_dimensions(child, context.clone(), available_width, available_height);
 
                 let cw = child_width.to_pixels(Some(available_width));
                 let ch = child_height.to_pixels(Some(available_height));
@@ -59,17 +60,13 @@ pub fn request_dimensions(
                 Box::new(Pixels::new(max_height)),
             )
         }
-        NodeKind::VStack => {
-            let max_width = 0.0_f64;
-            let height = 0.0_f64;
+        NodeKind::VStack { spacing, .. } => {
+            let mut max_width = 0.0_f64;
+            let mut height = 0.0_f64;
 
             for child in &node.children {
-                let (child_width, child_height) = crate::pal::apple::measure::request_dimensions(
-                    child,
-                    context.clone(),
-                    available_width,
-                    available_height,
-                );
+                let (child_width, child_height) =
+                    request_dimensions(child, context, available_width, available_height);
 
                 let cw = child_width.to_pixels(Some(available_width));
                 let ch = child_height.to_pixels(Some(available_height));
