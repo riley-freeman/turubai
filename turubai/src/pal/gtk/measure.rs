@@ -21,8 +21,8 @@ pub fn request_dimensions(
             decoration,
         } => {
             let label = gtk4::Label::new(Some(content.as_str()));
-            let (attrs, _) = conv::create_pango_attr_list(&font, &color, &decoration);
-            label.set_attributes(Some(&attrs));
+            let class = conv::conv_create_text_class(&font, &color, &decoration);
+            label.set_css_classes(&[&class]);
 
             let (_, natural_width, _, _) = label.measure(gtk4::Orientation::Horizontal, -1);
             let (_, natural_height, _, _) =

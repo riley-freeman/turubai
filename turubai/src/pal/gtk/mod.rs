@@ -222,8 +222,8 @@ impl Context {
                 decoration,
             } => {
                 let label = gtk4::Label::new(Some(content.as_str()));
-                let (attrs, _) = conv::create_pango_attr_list(font, color, decoration);
-                label.set_attributes(Some(&attrs));
+                let class = conv::conv_create_text_class(font, color, decoration);
+                label.set_css_classes(&[class.as_str()]);
                 NativeWidget::Text { label }
             }
             NodeKind::VStack { .. } | NodeKind::HStack { .. } => {
@@ -255,7 +255,7 @@ impl Context {
                 let child_native = self.render_node(&child);
                 widget.put(&child_native.widget(), 0.0, 0.0);
 
-                let style = conv::conv_background_color(color);
+                let style = conv::conv_create_background_color_class(color);
                 widget.style_context().add_class(&style);
 
                 NativeWidget::Container {
