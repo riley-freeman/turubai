@@ -49,6 +49,12 @@ pub enum NodeKind {
     BackgroundColor {
         color: Color,
     },
+    Padding {
+        top: f64,
+        left: f64,
+        bottom: f64,
+        right: f64,
+    },
     /// A generic container view
     View,
 }
@@ -125,6 +131,28 @@ impl ShadowDescriptor {
                 flex_direction: FlexDirection::Column,
                 // Stretch child horizontally (cross axis)
                 align_items: Some(taffy::AlignItems::Stretch),
+                ..Default::default()
+            },
+        }
+    }
+
+    pub fn padding(top: f64, left: f64, bottom: f64, right: f64) -> Self {
+        Self {
+            kind: NodeKind::Padding {
+                top,
+                left,
+                bottom,
+                right,
+            },
+            style: Style {
+                flex_direction: FlexDirection::Column,
+                align_items: Some(taffy::AlignItems::Stretch),
+                padding: taffy::Rect {
+                    top: taffy::LengthPercentage::length(top as f32),
+                    left: taffy::LengthPercentage::length(left as f32),
+                    bottom: taffy::LengthPercentage::length(bottom as f32),
+                    right: taffy::LengthPercentage::length(right as f32),
+                },
                 ..Default::default()
             },
         }

@@ -37,7 +37,7 @@ pub fn request_dimensions(
             text::request_dimensions(node, context.clone(), available_width, available_height)
         }
 
-        NodeKind::Spacer => (Box::new(Percent::new(1.0)), Box::new(Percent::new(1.0))),
+        NodeKind::Spacer => (Percent::new(1.0), Percent::new(1.0)),
 
         NodeKind::Window { title: _ } | NodeKind::BackgroundColor { .. } => request_dimensions(
             node.children.get(0).unwrap(),
@@ -45,6 +45,23 @@ pub fn request_dimensions(
             available_width,
             available_height,
         ),
+
+        NodeKind::Padding {
+            top,
+            left,
+            bottom,
+            right,
+        } => {
+            let (w, h) = request_dimensions(
+                node.children.get(0).unwrap(),
+                context.clone(),
+                available_width,
+                available_height,
+            );
+            let w = w.to_pixels(Some(available_width));
+            let h = h.to_pixels(Some(available_height));
+            (Pixels::new(w + left + right), Pixels::new(h + top + bottom))
+        }
 
         _ => {
             unimplemented!()
@@ -206,7 +223,43 @@ pub fn update_node_sizes(
 
         NodeKind::BackgroundColor { .. } => {
             // Background color wrapper: propagate child's size requirements
-            let child = node.children.get(0).expect("BackgroundColor must have a child");
+            let child = node
+                .children
+                .get(0)
+                .expect("BackgroundColor must have a child");
+            let (needs_full_width, needs_full_height) = update_node_sizes(
+                child,
+                tree,
+                context.clone(),
+                available_width,
+                available_height,
+            );
+
+            // Set size on the background color node to match child requirements
+            let width_dim = if needs_full_width {
+                taffy::Dimension::percent(1.0)
+            } else {
+                taffy::Dimension::auto()
+            };
+            let height_dim = if needs_full_height {
+                taffy::Dimension::percent(1.0)
+            } else {
+                taffy::Dimension::auto()
+            };
+
+            if needs_full_width || needs_full_height {
+                tree.set_size(node.taffy_id, width_dim, height_dim);
+            }
+
+            (needs_full_width, needs_full_height)
+        }
+
+        NodeKind::Padding { .. } => {
+            // Background color wrapper: propagate child's size requirements
+            let child = node
+                .children
+                .get(0)
+                .expect("BackgroundColor must have a child");
             let (needs_full_width, needs_full_height) = update_node_sizes(
                 child,
                 tree,

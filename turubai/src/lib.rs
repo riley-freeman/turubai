@@ -8,7 +8,7 @@ pub mod runtime;
 pub mod shadow;
 
 mod units;
-pub use units::Unit;
+pub use units::*;
 
 #[cfg(test)]
 mod tests;

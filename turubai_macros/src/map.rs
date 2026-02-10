@@ -1,6 +1,6 @@
 use std::{collections::HashMap, sync::LazyLock};
 
-use syn::{Ident, Path, parse_str};
+use syn::{parse_str, Ident, Path};
 
 pub static NAMESPACE: &'static str = "crate";
 
@@ -15,7 +15,8 @@ impl ElementEntry {
     }
 
     pub fn modifier_member(&self) -> Ident {
-        parse_str(&self.modifier_memeber).expect("Failed to parse responsible member in Modifiers struct.")
+        parse_str(&self.modifier_memeber)
+            .expect("Failed to parse responsible member in Modifiers struct.")
     }
 }
 
@@ -32,8 +33,13 @@ pub static POSTPROCESSING_ELEMENTS: LazyLock<HashMap<String, ElementEntry>> = La
         modifier_memeber: String::from("background_color"),
     };
 
+    let padding = ElementEntry {
+        path_str: "turubai::postprocessing::Padding".to_string(),
+        modifier_memeber: "padding".to_string(),
+    };
+
     HashMap::from([
         ("background_color".to_string(), background_color),
+        ("padding".to_string(), padding),
     ])
 });
-

@@ -42,7 +42,7 @@ pub fn request_dimensions(
             (size.width, size.height)
         });
 
-        (Box::new(Pixels::new(width)), Box::new(Pixels::new(height)))
+        (Pixels::new(width), Pixels::new(height))
     } else {
         unimplemented!()
     }

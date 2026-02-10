@@ -4,7 +4,7 @@ use turubai::{
     elements::{Element, Text, TextDecoration, TextDecorationLine, TextLineStyle},
     font::Font,
     runtime::WindowTemplate,
-    Application,
+    Application, Em,
 };
 use turubai_macros::turubai;
 
@@ -18,7 +18,8 @@ impl Application for MyApplication {
 
     fn markup(&self) -> Box<dyn Element> {
         let courier_font = Font::new("Courier New", 12, turubai::font::FontWeight::Regular, false);
-        let arial_font = Font::new("Inter", 16, turubai::font::FontWeight::Black, true);
+        let courier_font_clone = courier_font.clone();
+        let inter_font = Font::new("Inter", 16, turubai::font::FontWeight::Black, true);
 
         let thick_decoration = TextDecoration {
             underline: TextDecorationLine {
@@ -29,18 +30,23 @@ impl Application for MyApplication {
         };
 
         let white = Color::new(255, 255, 255);
+        let black = Color::new(0, 0, 0);
+        let primary = Color::new(255, 67, 86);
 
         turubai!(
             WindowTemplate(title: "Hello, World!") {
                 VStack(spacing: 0.0, alignment: HorizontalAlignment::Center) {
-                    // Text("Hello, World!", font: courier_font.clone()),
+                    // Text("Hello, World!", font: courier_font_clone, color: black.clone())
+                    //     .padding(Em::new(0.25))
+                    //     .background_color(white.clone())
+                    //     .padding(Em::new(1.0)),
+
                     // Dummy text to push the content down
-                    Text(" ", font: courier_font.clone()),
                     Spacer(),
-                    HStack(spacing: 0.0, text::font: arial_font.clone(), alignment: VerticalAlignment::Center) {
+                    HStack(spacing: 0.0, text::font: inter_font.clone(), alignment: VerticalAlignment::Center) {
                         Spacer(),
                         Text("CRAYON ", color: white.clone()),
-                        HStack(spacing: 0.0, text::decoration: thick_decoration.clone()) {
+                        HStack(spacing: -1.0) {
                             Text("T", color: Color::SystemRed),
                             Text("U", color: Color::SystemOrange),
                             Text("R", color: Color::SystemYellow),
@@ -48,14 +54,16 @@ impl Application for MyApplication {
                             Text("B", color: Color::SystemBlue),
                             Text("A", color: Color::SystemIndigo),
                             Text("I", color: Color::SystemPurple),
-                        },
+                            Text("  "),
+                        }
+                        .padding(Em::new(0.5))
+                        .background_color(white.clone())
+                        .padding(Em::new(0.5)),
                         Spacer(),
                     },
+                    Text("I think we need a little space.", font: courier_font.clone())
+                        .padding(Em::new(0.25)),
                     Spacer(),
-                    Text("We support Linux and GTK4!", font: courier_font.clone(), color: white.clone()),
-                    Text("2026 Ngishu, Mark Sadiki", font: courier_font.clone(), color: white.clone()),
-                    // Dummt text for spacing
-                    Text("", font: courier_font.clone(), color: white.clone()),
                 }
                 .background_color(Color::new(0, 0, 0))
             },

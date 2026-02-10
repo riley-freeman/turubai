@@ -112,6 +112,20 @@ impl Context {
                 }
             }
 
+            NodeKind::Padding { .. } => {
+                let child_node = node.children.first().expect("Padding must have a child");
+                let child_view = Context::render_node(child_node, tree, context.clone());
+
+                let view = View::new();
+                view.set_translates_autoresizing_mask_into_constraints(true);
+                view.add_subview(child_view.view());
+
+                NativeView::Container {
+                    view,
+                    _children: vec![child_view],
+                }
+            }
+
             _ => {
                 unimplemented!()
             }
@@ -127,9 +141,7 @@ impl Context {
         tree: ShadowTree,
     ) -> Window<TurubaiWindowDelegate> {
         let title = match &window_node.kind {
-            NodeKind::Window { title } => {
-                title.clone().unwrap_or_else(|| "Turubai App".to_string())
-            }
+            NodeKind::Window { title } => title.clone(),
             _ => "Untitled Window".to_string(),
         };
 

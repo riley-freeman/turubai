@@ -52,16 +52,10 @@ pub fn h_stack_request_dimensions(
 
     // If there are spacers, the stack takes full available width (percentage-based)
     if spacer_count > 0 {
-        return (
-            Box::new(Percent::new(1.0)),
-            Box::new(Pixels::new(max_height)),
-        );
+        return (Percent::new(1.0), Pixels::new(max_height));
     }
 
-    (
-        Box::new(Pixels::new(width)),
-        Box::new(Pixels::new(max_height)),
-    )
+    (Pixels::new(width), Pixels::new(max_height))
 }
 
 pub fn render_h_stack(node: &ShadowNode, tree: &ShadowTree, context: Context) -> NativeView {
@@ -129,16 +123,10 @@ pub fn v_stack_request_dimensions(
 
     // If there are spacers, the stack takes full available height (percentage-based)
     if spacer_count > 0 {
-        return (
-            Box::new(Pixels::new(max_width)),
-            Box::new(Percent::new(1.0)),
-        );
+        return (Pixels::new(max_width), Percent::new(1.0));
     }
 
-    (
-        Box::new(Pixels::new(max_width)),
-        Box::new(Pixels::new(height)),
-    )
+    (Pixels::new(max_width), Pixels::new(height))
 }
 
 /// Calculate minimum dimensions (spacers treated as 0 size)

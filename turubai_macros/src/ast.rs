@@ -233,7 +233,7 @@ pub struct ExprPostProcessStack {
 impl ExprPostProcessStack {
     pub fn into_expr_element(&self) -> ExprElement {
         let mut prev: Option<ExprElement> = None;
-        for call in self.stack.iter().rev() {
+        for call in self.stack.iter() {
             let mut children = Punctuated::new();
             children.push(prev.unwrap_or(self.element.clone()));
 
