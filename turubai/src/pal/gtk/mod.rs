@@ -63,9 +63,12 @@ impl NativeWidget {
                 container,
                 children,
             } => {
-                // Don't set_size_request on Fixed containers — they position
-                // children absolutely and don't need a minimum size. Setting it
-                // would cause GTK to resize the window, creating a feedback loop.
+                // Set the size request for the container itself so that
+                // its background color (if any) is visible and it can
+                // properly contain its children.
+                if let Some(layout) = tree.get_layout(node.taffy_id) {
+                    container.set_size_request(layout.size.width as i32, layout.size.height as i32);
+                }
 
                 for (child_widget, child_node) in children.iter().zip(node.children.iter()) {
                     // Reposition child within the Fixed container
@@ -195,6 +198,40 @@ impl Context {
                 (needs_full_width, needs_full_height)
             }
 
+            NodeKind::Padding {
+                top,
+                left,
+                bottom,
+                right,
+            } => {
+                let child = node.children.get(0).expect("Padding must have a child");
+
+                // Subtract padding from available space
+                let (needs_full_width, needs_full_height) = self.update_layout(
+                    child,
+                    tree,
+                    available_width - (left + right),
+                    available_height - (top + bottom),
+                );
+
+                let width_dim = if needs_full_width {
+                    taffy::Dimension::percent(1.0)
+                } else {
+                    taffy::Dimension::auto()
+                };
+                let height_dim = if needs_full_height {
+                    taffy::Dimension::percent(1.0)
+                } else {
+                    taffy::Dimension::auto()
+                };
+
+                if needs_full_width || needs_full_height {
+                    tree.set_size(node.taffy_id, width_dim, height_dim);
+                }
+
+                (needs_full_width, needs_full_height)
+            }
+
             _ => {
                 // Other containers: recurse into children
                 let mut needs_full_width = false;
@@ -257,6 +294,22 @@ impl Context {
 
                 let style = conv::conv_create_background_color_class(color);
                 widget.style_context().add_class(&style);
+
+                NativeWidget::Container {
+                    container: widget,
+                    children: vec![child_native],
+                }
+            }
+
+            NodeKind::Padding { .. } => {
+                let widget = gtk4::Fixed::new();
+                let child = node
+                    .children
+                    .first()
+                    .expect("Padding requires at least one element!");
+
+                let child_native = self.render_node(&child);
+                widget.put(&child_native.widget(), 0.0, 0.0);
 
                 NativeWidget::Container {
                     container: widget,

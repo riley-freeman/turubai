@@ -28,11 +28,11 @@ pub fn request_dimensions(
             let (_, natural_height, _, _) =
                 label.measure(gtk4::Orientation::Vertical, natural_width);
 
-            let width = Box::new(Pixels::new(natural_width as f64));
-            let height = Box::new(Pixels::new(natural_height as f64));
+            let width = Pixels::new(natural_width as f64);
+            let height = Pixels::new(natural_height as f64);
             (width, height)
         }
-        NodeKind::Spacer => (Box::new(Percent::new(1.0)), Box::new(Percent::new(1.0))),
+        NodeKind::Spacer => (Percent::new(1.0), Percent::new(1.0)),
         NodeKind::HStack { spacing, .. } => {
             let mut width = 0.0_f64;
             let mut max_height = 0.0_f64;
@@ -55,10 +55,7 @@ pub fn request_dimensions(
                 width += spacing * (node.children.len() - 1) as f64;
             }
 
-            (
-                Box::new(Pixels::new(width)),
-                Box::new(Pixels::new(max_height)),
-            )
+            (Pixels::new(width), Pixels::new(max_height))
         }
         NodeKind::VStack { spacing, .. } => {
             let mut max_width = 0.0_f64;
@@ -82,12 +79,8 @@ pub fn request_dimensions(
                 height += spacing * (node.children.len() - 1) as f64;
             }
 
-            (
-                Box::new(Pixels::new(max_width)),
-                Box::new(Pixels::new(height)),
-            )
+            (Pixels::new(max_width), Pixels::new(height))
         }
-
-        _ => (Box::new(Pixels::new(0.0)), Box::new(Pixels::new(0.0))),
+        _ => (Pixels::new(0.0), Pixels::new(0.0)),
     }
 }
