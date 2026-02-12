@@ -38,8 +38,14 @@ pub static POSTPROCESSING_ELEMENTS: LazyLock<HashMap<String, ElementEntry>> = La
         modifier_memeber: "padding".to_string(),
     };
 
+    let frame = ElementEntry {
+        path_str: "turubai::postprocessing::frame".to_string(),
+        modifier_memeber: "frame".to_string()
+    };
+
     HashMap::from([
         ("background_color".to_string(), background_color),
         ("padding".to_string(), padding),
+        ("frame".to_string(), frame),
     ])
 });

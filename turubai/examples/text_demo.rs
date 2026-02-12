@@ -1,10 +1,11 @@
 use turubai::{
     color::Color,
-    composition::{HStack, HorizontalAlignment, Spacer, VStack},
+    composition::{HStack, HorizontalAlignment, VStack},
     elements::{Element, Modifiers, Text, TextDecoration, TextDecorationLine, TextLineStyle},
     font::{Font, FontWeight},
     runtime::WindowTemplate,
     Application,
+    Unit::Em,
 };
 use turubai_macros::turubai;
 
@@ -52,7 +53,7 @@ impl Application for TextDemoApp {
 
         turubai!(
             WindowTemplate(title: "GTK Text Demo") {
-                VStack(spacing: 10.0, alignment: HorizontalAlignment::Center) {
+                VStack(spacing: Em(1.0), alignment: HorizontalAlignment::Center) {
                     Text("Standard Text", font: base_font.clone()),
 
                     Text("Bold Text", font: bold_font.clone()),
@@ -69,7 +70,7 @@ impl Application for TextDemoApp {
 
                     Text("Double Blue Underline", decoration: colored_underline.clone(), font: base_font.clone()),
 
-                    HStack(spacing: 5.0) {
+                    HStack(spacing: Em(1.0)) {
                         Text("Mixed: ", font: base_font.clone()),
                         Text("Red", color: red.clone(), font: bold_font.clone()),
                         Text(" & ", font: base_font.clone()),
@@ -82,5 +83,6 @@ impl Application for TextDemoApp {
 }
 
 fn main() {
-    turubai::runtime::turubai_main(Box::new(TextDemoApp::default()));
+    let app = TextDemoApp::default();
+    turubai::runtime::turubai_main(app);
 }

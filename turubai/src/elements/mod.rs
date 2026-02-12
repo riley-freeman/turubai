@@ -3,7 +3,7 @@ mod text;
 pub use text::*;
 
 use std::sync::{Arc, Mutex, MutexGuard, LockResult};
-use crate::{composition::{HStackModifiers, VStackModifiers}, runtime::WindowModifiers, shadow::ShadowDescriptor};
+use crate::{composition::{HStackModifiers, VStackModifiers}, postprocessing::{FrameModifiers, PaddingModifiers}, runtime::WindowModifiers, shadow::ShadowDescriptor};
 
 pub trait Element: Send + Sync {
     fn name(&self) -> &'static str;
@@ -33,6 +33,9 @@ pub struct ModifiersInner {
     pub v_stack: VStackModifiers,
     pub h_stack: HStackModifiers,
     pub window_template: WindowModifiers,
+
+    pub frame: FrameModifiers,
+    pub padding: PaddingModifiers,
 }
 
 #[derive(Default, Clone)]

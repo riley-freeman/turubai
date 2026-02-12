@@ -20,7 +20,7 @@ impl BackgroundColor {
         Self::from(inner)
     }
 
-    pub fn new_1(
+    pub fn turubai_new_with_1_args(
         color: Color,
         modifiers: Modifiers,
         children: impl FnOnce(Modifiers) -> Vec<Box<dyn Element>>,
@@ -59,6 +59,10 @@ impl From<BackgroundColorInner> for BackgroundColor {
             inner: Arc::new(Mutex::new(value)),
         }
     }
+}
+
+pub fn background_color(color: Color, child: Box<dyn Element>, _modifiers: Modifiers) -> BackgroundColor {
+    BackgroundColor::new(&color, child)
 }
 
 

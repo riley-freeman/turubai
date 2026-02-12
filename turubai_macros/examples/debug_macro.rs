@@ -1,5 +1,26 @@
+use std::sync::{Arc, LockResult, Mutex, MutexGuard};
+
+use syn::token::Mod;
 use turubai_macros::turubai;
-use turubai_types::Modifiers;
+
+#[derive(Default, Clone)]
+struct ModifiersInner {}
+
+impl ModifiersInner {
+    pub fn fork(&self) -> Self { Self::default() }
+}
+
+#[derive(Default, Clone)]
+struct Modifiers {
+    inner: Arc<Mutex<ModifiersInner>>
+}
+
+impl Modifiers {
+    pub fn fork(&self) -> Self { Self::default() }
+    pub fn lock(&self) -> LockResult<MutexGuard<ModifiersInner>> {
+        self.inner.lock()
+    }
+}
 
 trait Living {
     fn say_hello(&self, spacing: u32);
@@ -12,14 +33,14 @@ struct Person {
 
 
 impl Person {
-    fn new_0(modifiers: Modifiers, children: fn(Modifiers) -> Vec<Box<dyn Living>>) -> Self {
+    fn turubai_new_with_0_args(modifiers: Modifiers, children: fn(Modifiers) -> Vec<Box<dyn Living>>) -> Self {
         Self {
             name: "John Doe".to_string(),
             children: children(modifiers),
         }
     }
 
-    fn new_1(name: &str, modifiers: Modifiers, children: fn(Modifiers) -> Vec<Box<dyn Living>>) -> Self {
+    fn turubai_new_with_1_args(name: &str, modifiers: Modifiers, children: fn(Modifiers) -> Vec<Box<dyn Living>>) -> Self {
         Self {
             name: name.to_string(),
             children: children(modifiers),
@@ -50,12 +71,12 @@ fn main() {
 
     let family = turubai!(
         Person("Ngishu Family") {
-            Person("Mark Ngishu"),
-            Person("Rose Ngishu"),
-            Person("Ziki"),
-            Person("Markelle"),
-            Person("Sadiki"),
-            Person("Matthew"),
+            Person("Mark Ngishu")
+            Person("Rose Ngishu")
+            Person("Ziki")
+            Person("Markelle")
+            Person("Sadiki")
+            Person("Matthew")
             Person()
         }
     );

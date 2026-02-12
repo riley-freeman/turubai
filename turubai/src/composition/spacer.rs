@@ -19,7 +19,7 @@ impl Spacer {
         }
     }
 
-    pub fn new_0(
+    pub fn turubai_new_with_0_args(
         modifiers: Modifiers,
         children: impl FnOnce(Modifiers) -> Vec<Box<dyn Element>>,
     ) -> Self {

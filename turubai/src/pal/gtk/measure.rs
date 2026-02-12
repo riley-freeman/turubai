@@ -3,7 +3,6 @@ use gtk4::prelude::WidgetExt;
 use crate::{
     pal::gtk::{conv, Context},
     shadow::{NodeKind, ShadowNode},
-    units::{Percent, Pixels},
     Unit,
 };
 
@@ -12,7 +11,7 @@ pub fn request_dimensions(
     context: &Context,
     available_width: f64,
     available_height: f64,
-) -> (Box<dyn Unit>, Box<dyn Unit>) {
+) -> (Unit, Unit) {
     match &node.kind {
         NodeKind::Text {
             content,
@@ -28,11 +27,11 @@ pub fn request_dimensions(
             let (_, natural_height, _, _) =
                 label.measure(gtk4::Orientation::Vertical, natural_width);
 
-            let width = Pixels::new(natural_width as f64);
-            let height = Pixels::new(natural_height as f64);
+            let width = Unit::Pixels(natural_width as f64);
+            let height = Unit::Pixels(natural_height as f64);
             (width, height)
         }
-        NodeKind::Spacer => (Percent::new(1.0), Percent::new(1.0)),
+        NodeKind::Spacer => (Unit::Percent(1.0), Unit::Percent(1.0)),
         NodeKind::HStack { spacing, .. } => {
             let mut width = 0.0_f64;
             let mut max_height = 0.0_f64;
@@ -55,7 +54,7 @@ pub fn request_dimensions(
                 width += spacing * (node.children.len() - 1) as f64;
             }
 
-            (Pixels::new(width), Pixels::new(max_height))
+            (Unit::Pixels(width), Unit::Pixels(max_height))
         }
         NodeKind::VStack { spacing, .. } => {
             let mut max_width = 0.0_f64;
@@ -79,8 +78,9 @@ pub fn request_dimensions(
                 height += spacing * (node.children.len() - 1) as f64;
             }
 
-            (Pixels::new(max_width), Pixels::new(height))
+            (Unit::Pixels(max_width), Unit::Pixels(height))
         }
-        _ => (Pixels::new(0.0), Pixels::new(0.0)),
+
+        _ => (Unit::Pixels(0.0), Unit::Pixels(0.0)),
     }
 }

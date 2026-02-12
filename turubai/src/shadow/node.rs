@@ -6,6 +6,7 @@ use crate::{
     elements::TextDecoration,
     font::Font,
     shadow::conv::{conv_h_alignment, conv_v_alignment},
+    Unit,
 };
 
 /// A node in the shadow tree - platform agnostic description of a UI element
@@ -37,12 +38,12 @@ pub enum NodeKind {
     },
     /// A horizontal stack (HStack)
     HStack {
-        spacing: f64,
+        spacing: Unit,
         alignment: VerticalAlignment,
     },
     /// A vertical stack (VStack)
     VStack {
-        spacing: f64,
+        spacing: Unit,
         alignment: HorizontalAlignment,
     },
     Spacer,
@@ -54,6 +55,14 @@ pub enum NodeKind {
         left: f64,
         bottom: f64,
         right: f64,
+    },
+    Frame {
+        max_width: Unit,
+        max_height: Unit,
+        min_width: Unit,
+        min_height: Unit,
+        width: Unit,
+        height: Unit,
     },
     /// A generic container view
     View,
@@ -83,14 +92,14 @@ impl ShadowDescriptor {
         }
     }
 
-    pub fn hstack(spacing: f64, alignment: VerticalAlignment) -> Self {
+    pub fn hstack(spacing: Unit, alignment: VerticalAlignment) -> Self {
         Self {
             kind: NodeKind::HStack { spacing, alignment },
             style: Style {
                 flex_direction: FlexDirection::Row,
                 align_items: Some(conv_v_alignment(alignment)),
                 gap: taffy::Size {
-                    width: taffy::LengthPercentage::length(spacing as _),
+                    width: spacing.into(),
                     height: taffy::LengthPercentage::length(0.0),
                 },
                 ..Default::default()
@@ -98,7 +107,7 @@ impl ShadowDescriptor {
         }
     }
 
-    pub fn vstack(spacing: f64, alignment: HorizontalAlignment) -> Self {
+    pub fn vstack(spacing: Unit, alignment: HorizontalAlignment) -> Self {
         Self {
             kind: NodeKind::VStack { spacing, alignment },
             style: Style {
@@ -106,7 +115,7 @@ impl ShadowDescriptor {
                 align_items: Some(conv_h_alignment(alignment)),
                 gap: taffy::Size {
                     width: taffy::LengthPercentage::length(0.0),
-                    height: taffy::LengthPercentage::length(spacing as _),
+                    height: spacing.into(),
                 },
                 ..Default::default()
             },

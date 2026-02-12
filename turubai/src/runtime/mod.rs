@@ -18,14 +18,14 @@ struct WindowTemplateInner {
 }
 
 impl WindowTemplate {
-    pub fn new_0(
+    pub fn turubai_new_with_0_args(
         modifiers: Modifiers,
         children: impl FnOnce(Modifiers) -> Vec<Box<dyn Element>>,
     ) -> Self {
         Self::new_1_impl("default", modifiers, children)
     }
 
-    pub fn new_1(
+    pub fn turubai_new_with_1_args(
         id: &str,
         modifiers: Modifiers,
         children: impl FnOnce(Modifiers) -> Vec<Box<dyn Element>>,
@@ -102,6 +102,7 @@ pub struct WindowModifiers {
     pub title: &'static str,
 }
 
-pub fn turubai_main(app: Box<dyn Application>) -> ! {
-    crate::pal::takeover(app)
+pub fn turubai_main<T: Application + 'static>(app: T) -> ! {
+    let boxed: Box::<dyn Application> = Box::new(app);
+    crate::pal::takeover(boxed);
 }

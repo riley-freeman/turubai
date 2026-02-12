@@ -1,16 +1,10 @@
-use proc_macro2::Span;
+use proc_macro2::{Span, TokenStream};
 use syn::{
-    braced, parenthesized,
-    parse::{Parse, ParseStream},
-    punctuated::Punctuated,
-    token::{Brace, Paren},
-    Expr, Ident, Token,
+    Expr, ExprCall, Ident, Token, braced, parenthesized, parse::{Parse, ParseStream}, punctuated::Punctuated, token::{Brace, Paren}
 };
 
 use quote::quote;
 use quote::ToTokens;
-
-use crate::map::POSTPROCESSING_ELEMENTS;
 
 #[derive(Clone)]
 pub struct ExprElement {
@@ -19,7 +13,50 @@ pub struct ExprElement {
     required_args: Punctuated<Expr, Token![,]>,
     optional_args: Punctuated<OptionalAttrExpr, Token![,]>,
     brace_token: Option<Brace>,
-    children: Punctuated<ExprElement, Token![,]>,
+    children: Vec<Partition>,
+}
+
+fn to_snake_case(original: &str) -> String {
+    let mut output = String::new();
+    for (i, c) in original.chars().enumerate() {
+        if c.is_ascii_uppercase() && i != 0 {
+            output.push('_');
+        }
+        output.push(c.to_ascii_lowercase());
+    }
+    output
+}
+
+/// Build the modifier-forking block from optional args.
+/// `default_member` is the fallback namespace (e.g. "text", "padding") when
+/// an arg doesn't specify its own `namespace::` prefix.
+fn build_modifiers_block(
+    optional_args: &Punctuated<OptionalAttrExpr, Token![,]>,
+    default_member: &str,
+) -> proc_macro2::TokenStream {
+    let mut set_tokens = vec![];
+    for arg in optional_args {
+        let field_name = arg.name.clone();
+        let val = arg.value.clone();
+
+        let member = if let Some(ref ns) = arg.namespace {
+            ns.clone()
+        } else {
+            syn::parse_str::<Ident>(default_member).unwrap()
+        };
+
+        set_tokens.push(quote! { fm_lock.#member.#field_name = #val; });
+    }
+
+    quote! {
+        {
+            let mut fm = modifiers.fork();
+            let mut fm_lock = fm.lock().unwrap();
+            #(#set_tokens)*
+            std::mem::drop(fm_lock);
+            fm
+        }
+    }
 }
 
 impl ExprElement {
@@ -31,33 +68,30 @@ impl ExprElement {
         self.tag.clone()
     }
 
-    pub fn to_token_stream(&self) -> proc_macro2::TokenStream {
+    pub fn to_token_stream(&self) -> syn::Result<proc_macro2::TokenStream> {
         let tag = self.tag();
         let path = self.path();
-
-        //let record = ELEMENTS.get(tag.as_str()).expect("Element is not registered in the Turubai Macros database");
 
         let required_args = self.required_args();
         let optional_args = self.optional_args();
 
-        let mut children = vec![];
-        let mut children_names = Punctuated::<Ident, Token![,]>::new();
-        for (i, child) in self.children.iter().enumerate() {
-            let render = child.to_token_stream();
-            let child_name = Ident::new(&format!("ch_{i}"), Span::call_site());
-            children.push(quote! {let #child_name = Box::new(#render);});
-            children_names.push(child_name);
+        // Collect all children from all partitions
+        let mut child_stmts = vec![];
+        let mut child_names = Punctuated::<Ident, Token![,]>::new();
+        let mut idx = 0_usize;
+        for partition in &self.children {
+            partition.collect_children(&mut child_stmts, &mut child_names, &mut idx)?;
         }
-        children.push(quote! {
-            vec![#children_names]
+        child_stmts.push(quote! {
+            vec![#child_names]
         });
 
         let wrapped_children_function = quote! {
-            move |modifiers| {#(#children)*}
+            move |modifiers| {#(#child_stmts)*}
         };
 
         let method_name = Ident::new(
-            &format!("new_{}", self.required_args.len()),
+            &format!("turubai_new_with_{}_args", self.required_args.len()),
             path.segments.last().unwrap().ident.span(),
         );
         let result = if required_args.is_empty() {
@@ -71,53 +105,16 @@ impl ExprElement {
             eprintln!("{}", result.to_string().replace(" :: ", "::"));
         }
 
-        result
+        Ok(result)
     }
 
     pub fn required_args(&self) -> proc_macro2::TokenStream {
         self.required_args.to_token_stream().into()
     }
 
-    fn to_namespace(original: &str) -> String {
-        let mut output = "".to_string();
-        for (i, c) in original.chars().enumerate() {
-            if c.is_ascii_uppercase() && i != 0 {
-                output.push('_');
-            }
-            output.push(c.to_ascii_lowercase());
-        }
-        output
-    }
-
     pub fn optional_args(&self) -> proc_macro2::TokenStream {
-        let name = self.tag();
-        let default_member = Self::to_namespace(&name);
-
-        let mut set_tokens = vec![];
-        for arg in &self.optional_args {
-            let field_name = arg.name.clone();
-            let val = arg.value.clone();
-
-            // Use the namespace if provided, otherwise use the default member
-            let member = if let Some(ref ns) = arg.namespace {
-                ns.clone()
-            } else {
-                let token: Ident = syn::parse_str(&default_member).unwrap();
-                token
-            };
-
-            set_tokens.push(quote! {fm_lock.#member.#field_name = #val;});
-        }
-
-        quote! {
-            {
-                let mut fm = modifiers.fork();
-                let mut fm_lock = fm.lock().unwrap();
-                #(#set_tokens)*
-                std::mem::drop(fm_lock);
-                fm
-            }
-        }
+        let default_member = to_snake_case(&self.tag());
+        build_modifiers_block(&self.optional_args, &default_member)
     }
 }
 
@@ -177,18 +174,14 @@ impl Parse for ExprElement {
             optional_args = opt;
         }
 
-        let mut children = Punctuated::<ExprPostProcessStack, Token![,]>::new();
+        let mut children = Vec::new();
         let mut brace_token = None;
         let lookahead = input.lookahead1();
         if lookahead.peek(Brace) {
             let content;
             brace_token = Some(braced!(content in input));
-            children = content.parse_terminated(ExprPostProcessStack::parse, Token![,])?;
+            children = parse_partitions(&content)?;
         }
-        let children = children
-            .iter()
-            .map(|post| post.into_expr_element())
-            .collect();
 
         Ok(Self {
             tag,
@@ -207,53 +200,60 @@ impl Parse for ExprElement {
 pub struct SimpleMethodCall {
     pub name: Ident,
     pub paren_token: Paren,
-    pub args: Punctuated<Expr, Token![,]>,
+    pub required_args: Punctuated<Expr, Token![,]>,
+    pub optional_args: Punctuated<OptionalAttrExpr, Token![,]>,
 }
 
 impl Parse for SimpleMethodCall {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         let name = input.parse::<Ident>()?;
+
         let content;
         let paren_token = parenthesized!(content in input);
-        let args = content.parse_terminated(Expr::parse, Token![,])?;
+        let (required_args, optional_args) = parse_attributes(&content)?;
+
         Ok(Self {
             name,
             paren_token,
-            args,
+            required_args,
+            optional_args,
         })
     }
 }
 
+#[derive(Clone)]
 pub struct ExprPostProcessStack {
     element: ExprElement,
-    period_token: Option<Token![.]>,
+    _period_token: Option<Token![.]>,
     stack: Punctuated<SimpleMethodCall, Token![.]>,
 }
 
 impl ExprPostProcessStack {
-    pub fn into_expr_element(&self) -> ExprElement {
-        let mut prev: Option<ExprElement> = None;
+    pub fn to_token_stream(&self) -> syn::Result<TokenStream> {
+        let child = self.element.to_token_stream()?;
+        let boxed_child = quote! { Box::new(#child) };
+
+        let mut prev = syn::parse2::<Expr>(boxed_child)?;
         for call in self.stack.iter() {
-            let mut children = Punctuated::new();
-            children.push(prev.unwrap_or(self.element.clone()));
+            let default_member = to_snake_case(&call.name.to_string());
+            let modifiers_block = build_modifiers_block(&call.optional_args, &default_member);
 
-            let call_str = call.name.to_string();
-            let error_message = format!("{} is not a post processing function", call_str);
-            let effect = POSTPROCESSING_ELEMENTS
-                .get(&call_str)
-                .expect(&error_message);
+            let mut args = Punctuated::new();
+            args.extend(call.required_args.iter().cloned());
+            args.push(prev);
+            args.push(syn::parse2::<Expr>(modifiers_block)?);
 
-            prev = Some(ExprElement {
-                tag: effect.path(),
-                _paren_token: Some(call.paren_token),
-                required_args: call.args.clone(),
-                optional_args: Punctuated::new(),
-                brace_token: None,
-                children,
-            });
+            let syn_call = ExprCall {
+                func: Box::new(syn::parse_str::<Expr>(&call.name.to_string())?),
+                args,
+                attrs: Vec::new(),
+                paren_token: call.paren_token.clone()
+            };
+            let call_expr = Expr::Call(syn_call);
+            prev = syn::parse2::<Expr>(quote! { Box::new(#call_expr) })?;
         }
 
-        prev.unwrap_or(self.element.clone())
+        Ok(quote! { #prev }.into())
     }
 }
 
@@ -269,14 +269,86 @@ impl Parse for ExprPostProcessStack {
             Ok(ExprPostProcessStack {
                 element,
                 stack,
-                period_token,
+                _period_token: period_token,
             })
         } else {
             Ok(ExprPostProcessStack {
                 element,
                 stack: Punctuated::new(),
-                period_token: None,
+                _period_token: None,
             })
+        }
+    }
+}
+
+#[derive(Clone)]
+pub enum Partition {
+    Element(ExprPostProcessStack),
+    // Future: Loop, Conditional, etc.
+}
+
+impl Partition {
+    /// Append boxed child statements and names for use in a children vec.
+    fn collect_children(
+        &self,
+        stmts: &mut Vec<TokenStream>,
+        names: &mut Punctuated<Ident, Token![,]>,
+        idx: &mut usize,
+    ) -> syn::Result<()> {
+        match self {
+            Partition::Element(post) => {
+                let render = post.to_token_stream()?;
+                let child_name = Ident::new(&format!("ch_{}", *idx), Span::call_site());
+                stmts.push(quote! { let #child_name = #render; });
+                names.push(child_name);
+                *idx += 1;
+            }
+        }
+        Ok(())
+    }
+}
+
+/// Parse a sequence of partitions. Elements are separated by optional commas.
+fn parse_partitions(input: ParseStream) -> syn::Result<Vec<Partition>> {
+    let mut partitions = Vec::new();
+    while !input.is_empty() {
+        partitions.push(Partition::Element(input.parse::<ExprPostProcessStack>()?));
+        // Consume optional trailing comma
+        let _ = input.parse::<Option<Token![,]>>();
+    }
+    Ok(partitions)
+}
+
+pub struct Ast {
+    partitions: Vec<Partition>,
+}
+
+impl Parse for Ast {
+    fn parse(input: ParseStream) -> syn::Result<Self> {
+        let partitions = parse_partitions(input)?;
+        Ok(Ast { partitions })
+    }
+}
+
+impl Ast {
+    pub fn to_token_stream(&self) -> syn::Result<TokenStream> {
+        // The top-level AST should produce a single element expression.
+        // Collect all partition outputs; the last one is the result.
+        let mut stmts = Vec::new();
+        let mut names = Punctuated::<Ident, Token![,]>::new();
+        let mut idx = 0_usize;
+        for p in &self.partitions {
+            p.collect_children(&mut stmts, &mut names, &mut idx)?;
+        }
+
+        // Return the last element as the result
+        if let Some(last) = names.last() {
+            Ok(quote! {
+                #(#stmts)*
+                #last
+            })
+        } else {
+            Ok(quote! {})
         }
     }
 }

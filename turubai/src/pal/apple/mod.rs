@@ -31,7 +31,6 @@ use crate::pal::apple::stack::{render_h_stack, render_spacer, render_v_stack};
 use crate::pal::apple::text::render_text;
 use crate::pal::{apple, DynContext};
 use crate::shadow::{NodeKind, ShadowNode, ShadowTree};
-use crate::units::Percent;
 use crate::{Application, Backend, Unit};
 
 static DEFAULT_WINDOW_WIDTH: f64 = 480.0;
@@ -337,15 +336,15 @@ impl TurubaiWindowDelegate {
     fn build_constraints(
         root_view: &NativeView,
         content: &View,
-        width_unit: &dyn Unit,
-        height_unit: &dyn Unit,
+        width_unit: &Unit,
+        height_unit: &Unit,
         available_width: f64,
         available_height: f64,
     ) -> Vec<LayoutConstraint> {
         let mut constraints = Vec::new();
 
-        let width_is_percent = width_unit.downcast_ref::<Percent>().is_some();
-        let height_is_percent = height_unit.downcast_ref::<Percent>().is_some();
+        let width_is_percent = width_unit.is_percent();
+        let height_is_percent = height_unit.is_percent();
 
         // X axis: if width is percentage, pin left/right; otherwise center horizontally
         if width_is_percent {
@@ -421,8 +420,8 @@ impl TurubaiWindowDelegate {
         let constraints = Self::build_constraints(
             &root_view,
             &content,
-            width_unit.as_ref(),
-            height_unit.as_ref(),
+            &width_unit,
+            &height_unit,
             available_width,
             available_height,
         );
@@ -467,8 +466,8 @@ impl TurubaiWindowDelegate {
         let new_constraints = Self::build_constraints(
             &self._root_view,
             &self.content,
-            width_unit.as_ref(),
-            height_unit.as_ref(),
+            &width_unit,
+            &height_unit,
             available_width,
             available_height,
         );

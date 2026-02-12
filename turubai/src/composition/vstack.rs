@@ -1,8 +1,11 @@
 use std::sync::Arc;
 use std::sync::Mutex;
 
+use crate::composition::spacer;
+use crate::composition::HorizontalAlignment;
 use crate::elements::{Element, Modifiers};
 use crate::shadow::ShadowDescriptor;
+use crate::Unit;
 
 pub struct VStack {
     inner: Arc<Mutex<VStackInner>>,
@@ -24,7 +27,7 @@ impl VStack {
         }
     }
 
-    pub fn new_0(
+    pub fn turubai_new_with_0_args(
         modifiers: Modifiers,
         children: impl FnOnce(Modifiers) -> Vec<Box<dyn Element>>,
     ) -> Self {
@@ -59,8 +62,17 @@ impl Element for VStack {
         }
     }
 }
-#[derive(Debug, Default, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct VStackModifiers {
-    pub spacing: f64,
+    pub spacing: Unit,
     pub alignment: super::HorizontalAlignment,
+}
+
+impl Default for VStackModifiers {
+    fn default() -> Self {
+        Self {
+            alignment: HorizontalAlignment::default(),
+            spacing: Unit::Pixels(0.0),
+        }
+    }
 }

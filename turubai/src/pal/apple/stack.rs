@@ -5,7 +5,6 @@ use cacao::view::View;
 
 use crate::pal::apple::{Context, NativeView};
 use crate::shadow::{NodeKind, ShadowNode, ShadowTree};
-use crate::units::{Percent, Pixels};
 use crate::Unit;
 
 pub fn h_stack_request_dimensions(
@@ -14,7 +13,7 @@ pub fn h_stack_request_dimensions(
     available_width: f64,
     available_height: f64,
     spacing: f64,
-) -> (Box<dyn Unit>, Box<dyn Unit>) {
+) -> (Unit, Unit) {
     let mut width = 0.0_f64;
     let mut max_height = 0.0_f64;
     let mut remaining_width = available_width;
@@ -52,10 +51,10 @@ pub fn h_stack_request_dimensions(
 
     // If there are spacers, the stack takes full available width (percentage-based)
     if spacer_count > 0 {
-        return (Percent::new(1.0), Pixels::new(max_height));
+        return (Unit::Percent(1.0), Unit::Pixels(max_height));
     }
 
-    (Pixels::new(width), Pixels::new(max_height))
+    (Unit::Pixels(width), Unit::Pixels(max_height))
 }
 
 pub fn render_h_stack(node: &ShadowNode, tree: &ShadowTree, context: Context) -> NativeView {
@@ -85,7 +84,7 @@ pub fn v_stack_request_dimensions(
     available_width: f64,
     available_height: f64,
     spacing: f64,
-) -> (Box<dyn Unit>, Box<dyn Unit>) {
+) -> (Unit, Unit) {
     let mut max_width = 0.0_f64;
     let mut height = 0.0_f64;
     let mut remaining_height = available_height;
@@ -123,10 +122,10 @@ pub fn v_stack_request_dimensions(
 
     // If there are spacers, the stack takes full available height (percentage-based)
     if spacer_count > 0 {
-        return (Pixels::new(max_width), Percent::new(1.0));
+        return (Unit::Pixels(max_width), Unit::Percent(1.0));
     }
 
-    (Pixels::new(max_width), Pixels::new(height))
+    (Unit::Pixels(max_width), Unit::Pixels(height))
 }
 
 /// Calculate minimum dimensions (spacers treated as 0 size)

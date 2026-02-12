@@ -27,7 +27,7 @@ impl Text {
         Self::from(inner)
     }
 
-    pub fn new_1(
+    pub fn turubai_new_with_1_args(
         contents: &str,
         modifiers: Modifiers,
         children: impl FnOnce(Modifiers) -> Vec<Box<dyn Element>>,

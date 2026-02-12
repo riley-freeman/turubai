@@ -1,7 +1,6 @@
 use crate::pal::apple::{stack, text, Context};
 use crate::shadow::ShadowTree;
 use crate::shadow::{NodeKind, ShadowNode};
-use crate::units::{Percent, Pixels};
 use crate::Unit;
 
 pub fn request_dimensions(
@@ -9,7 +8,7 @@ pub fn request_dimensions(
     context: Context,
     available_width: f64,
     available_height: f64,
-) -> (Box<dyn Unit>, Box<dyn Unit>) {
+) -> (Unit, Unit) {
     match node.kind.clone() {
         NodeKind::HStack {
             spacing,
@@ -19,7 +18,7 @@ pub fn request_dimensions(
             context.clone(),
             available_width,
             available_height,
-            spacing,
+            spacing.to_pixels(None),
         ),
 
         NodeKind::VStack {
@@ -30,14 +29,14 @@ pub fn request_dimensions(
             context.clone(),
             available_width,
             available_height,
-            spacing,
+            spacing.to_pixels(None),
         ),
 
         NodeKind::Text { .. } => {
             text::request_dimensions(node, context.clone(), available_width, available_height)
         }
 
-        NodeKind::Spacer => (Percent::new(1.0), Percent::new(1.0)),
+        NodeKind::Spacer => (Unit::Percent(1.0), Unit::Percent(1.0)),
 
         NodeKind::Window { title: _ } | NodeKind::BackgroundColor { .. } => request_dimensions(
             node.children.get(0).unwrap(),
@@ -60,7 +59,10 @@ pub fn request_dimensions(
             );
             let w = w.to_pixels(Some(available_width));
             let h = h.to_pixels(Some(available_height));
-            (Pixels::new(w + left + right), Pixels::new(h + top + bottom))
+            (
+                Unit::Pixels(w + left + right),
+                Unit::Pixels(h + top + bottom),
+            )
         }
 
         _ => {
@@ -79,12 +81,22 @@ pub fn request_minimum_dimensions(
         NodeKind::HStack {
             spacing,
             alignment: _,
-        } => stack::h_stack_minimum_dimensions(node, context.clone(), available_width, spacing),
+        } => stack::h_stack_minimum_dimensions(
+            node,
+            context.clone(),
+            available_width,
+            spacing.to_pixels(None),
+        ),
 
         NodeKind::VStack {
             spacing,
             alignment: _,
-        } => stack::v_stack_minimum_dimensions(node, context.clone(), available_width, spacing),
+        } => stack::v_stack_minimum_dimensions(
+            node,
+            context.clone(),
+            available_width,
+            spacing.to_pixels(None),
+        ),
 
         NodeKind::Text { .. } => {
             let (w, h) = text::request_dimensions(node, context.clone(), available_width, 0.0);
@@ -100,6 +112,20 @@ pub fn request_minimum_dimensions(
                 context.clone(),
                 available_width,
             )
+        }
+
+        NodeKind::Padding {
+            top,
+            left,
+            bottom,
+            right,
+        } => {
+            let (w, h) = request_minimum_dimensions(
+                node.children.get(0).unwrap(),
+                context.clone(),
+                available_width - left - right,
+            );
+            (w + left + right, h + top + bottom)
         }
 
         _ => (0.0, 0.0),

@@ -19,7 +19,6 @@ use crate::font::Font;
 use crate::pal::apple::color::NativeColor;
 use crate::pal::apple::{Context, NativeView};
 use crate::shadow::{NodeKind, ShadowNode};
-use crate::units::Pixels;
 use crate::Unit;
 
 use cacao::objc::{class, msg_send, sel, sel_impl};
@@ -29,7 +28,7 @@ pub fn request_dimensions(
     context: Context,
     _available_width: f64,
     _available_height: f64,
-) -> (Box<dyn Unit>, Box<dyn Unit>) {
+) -> (Unit, Unit) {
     if let NodeKind::Text { content, font, .. } = &node.kind {
         let font = context.get_native_font(font);
         let label = Label::new();
@@ -42,7 +41,7 @@ pub fn request_dimensions(
             (size.width, size.height)
         });
 
-        (Pixels::new(width), Pixels::new(height))
+        (Unit::Pixels(width), Unit::Pixels(height))
     } else {
         unimplemented!()
     }

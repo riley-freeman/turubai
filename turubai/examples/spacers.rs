@@ -1,8 +1,10 @@
 use turubai::{
     composition::{HStack, HorizontalAlignment, Spacer, VStack, VerticalAlignment},
+    elements::Modifiers,
     elements::{Element, Text},
     runtime::WindowTemplate,
     Application,
+    Unit::Em,
 };
 use turubai_macros::turubai;
 
@@ -17,9 +19,9 @@ impl Application for MyApplication {
     fn markup(&self) -> Box<dyn Element> {
         turubai!(
             WindowTemplate(title: "Spacers (Example)") {
-                VStack(spacing: 0.0, alignment: HorizontalAlignment::Center) {
+                VStack(spacing: Em(0.0), alignment: HorizontalAlignment::Center) {
                     Spacer(),
-                    HStack(spacing: 0.0, alignment: VerticalAlignment::Center) {
+                    HStack(spacing: Em(0.0), alignment: VerticalAlignment::Center) {
                         Text("👋"),
                         Spacer(),
                         Text("Wow, look at all these spacers!"),
@@ -34,5 +36,6 @@ impl Application for MyApplication {
 }
 
 fn main() {
-    turubai::runtime::turubai_main(Box::new(MyApplication::default()));
+    let app = MyApplication::default();
+    turubai::runtime::turubai_main(MyApplication::default());
 }
